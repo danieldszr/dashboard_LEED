@@ -146,11 +146,4 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
     try:
         geocoding_response = requests.get(
             "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name": address, "count": 1, "language": "it", "format": "json"},
-            timeout=10,
-        )
-        geocoding_response.raise_for_status()
-        locations = geocoding_response.json().get("results", [])
-        if not locations:
-            raise WeatherLookupError(
-                "Località non trovata. Prova a inserire città e provincia. / Location not found. Try entering city and province."
+            params={"name
