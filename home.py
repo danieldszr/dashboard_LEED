@@ -124,4 +124,33 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
     if selected_date < today - timedelta(days=RECENT_HISTORY_DAYS):
         weather_endpoint = "https://archive-api.open-meteo.com/v1/archive"
         weather_dates = {
-            "
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "archivio climatico / climate archive"
+    elif selected_date < today:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "past_days": (today - selected_date).days,
+            "forecast_days": 1,
+        }
+        data_source = "dati meteo recenti / recent weather data"
+    else:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "previsioni meteo / weather forecast"
+
+    try:
+        geocoding_response = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": address, "count": 1, "language": "it", "format": "json"},
+            timeout=10,
+        )
+        geocoding_response.raise_for_status()
+        locations = geocoding_response.json().get("results", [])
+        if not locations:
+            raise WeatherLookupError(
+                "Località non trovata. Prova a inserire città e provincia. / Location not found. Try entering city and province."
