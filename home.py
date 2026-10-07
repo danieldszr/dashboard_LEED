@@ -100,8 +100,8 @@ WEATHER_CODES = {
     80: "Rovesci deboli / Slight rain showers",
     81: "Rovesci moderati / Moderate rain showers",
     82: "Rovesci violenti / Violent rain showers",
-    85: "Rovesci di neve deboli / Slight snow showers",
-    86: "Rovesci di neve intensi / Heavy snow showers",
+    85: "Rovesci deboli di neve / Slight snow showers",
+    86: "Rovesci intensi di neve / Heavy snow showers",
     95: "Temporale / Thunderstorm",
     96: "Temporale con grandine debole / Thunderstorm with slight hail",
     99: "Temporale con grandine intensa / Thunderstorm with heavy hail",
@@ -110,40 +110,4 @@ RECENT_HISTORY_DAYS = 92
 
 
 class WeatherLookupError(Exception):
-    """Errore recuperabile nella ricerca della località o dei dati meteo."""
-
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_weather(address: str, inspection_day: str) -> dict:
-    selected_date = date.fromisoformat(inspection_day)
-    today = date.today()
-    if selected_date > today + timedelta(days=15):
-        raise WeatherLookupError(
-            "Le previsioni sono disponibili in una finestra di 16 giorni, incluso oggi. / Forecasts are available in a 16-day window, including today."
-        )
-    if selected_date < today - timedelta(days=RECENT_HISTORY_DAYS):
-        weather_endpoint = "https://archive-api.open-meteo.com/v1/archive"
-        weather_dates = {
-            "start_date": inspection_day,
-            "end_date": inspection_day,
-        }
-        data_source = "archivio climatico / climate archive"
-    elif selected_date < today:
-        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
-        weather_dates = {
-            "past_days": (today - selected_date).days,
-            "forecast_days": 1,
-        }
-        data_source = "dati meteo recenti / recent weather data"
-    else:
-        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
-        weather_dates = {
-            "start_date": inspection_day,
-            "end_date": inspection_day,
-        }
-        data_source = "previsioni meteo / weather forecast"
-
-    try:
-        geocoding_response = requests.get(
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name
+    """Erro
