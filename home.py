@@ -19,6 +19,8 @@ from reportlab.platypus import (
 )
 
 
+
+
 CHECKLIST = [
     (
         "Pianificazione e gestione del cantiere",
