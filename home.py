@@ -74,6 +74,7 @@ INSPECTION_TYPES = (
     "Prima di un evento meteorico / Pre-storm event",
     "Durante un evento meteorico / During Storm Event",
     "Dopo un evento meteorico / Post-storm event"
+    "Altro / Other"
 )
 
 WEATHER_CODES = {
@@ -231,7 +232,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         leftMargin=17 * mm,
         topMargin=20 * mm,
         bottomMargin=18 * mm,
-        title="Checklist ispezione di cantiere LEED / LEED Construction Site Inspection Checklist",
+        title="Ispezione di cantiere LEED / LEED Construction Site Inspection",
         author="Dashboard checklist LEED",
     )
     styles = getSampleStyleSheet()
@@ -283,7 +284,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles[style])
 
     story = [
-        Paragraph("Checklist ispezione di cantiere LEED / LEED Construction Site Inspection Checklist", styles["ChecklistTitle"]),
+        Paragraph("Ispezione di cantiere LEED / LEED Construction Site Inspection", styles["ChecklistTitle"]),
         Paragraph(
             "Strumento operativo di supporto. Verificare sempre i requisiti applicabili "
             "nella versione LEED, nei crediti perseguiti e nei documenti approvati del progetto. / "
