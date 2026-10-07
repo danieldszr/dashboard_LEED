@@ -459,4 +459,215 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
         inspection_date = st.date_input("Data ispezione / Inspection Date", value=date.today(), key="inspection_date")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            start_time = st.time_
+            start_time = st.time_input("Ora inizio / Start time", value=time(8, 0), key="start_time")
+        with col_t2:
+            end_time = st.time_input("Ora fine / End time", value=time(17, 0), key="end_time")
+        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
+        
+        weather = "Non disponibile / Not available"
+        weather_source = ""
+        if address.strip():
+            try:
+                with st.spinner("Recupero automatico del meteo... / Fetching weather automatically..."):
+                    weather_data = fetch_weather(address.strip(), inspection_date.isoformat())
+                weather = weather_data["summary"]
+                weather_source = weather_data["data_source"]
+                weather_label = (
+                    "Meteo storico stimato / Estimated historical weather"
+                    if inspection_date < date.today()
+                    else "Meteo previsto / Weather forecast"
+                )
+                st.success(f"**{weather_label}:** {weather}")
+                st.caption(
+                    f"Fonte / Source: Open-Meteo, {weather_source}. I dati passati sono stime "
+                    "retrospettive del modello / Past data are retrospective model estimates."
+                )
+            except WeatherLookupError as error:
+                st.warning(str(error))
+        else:
+            st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata. / Enter the address to automatically retrieve the weather for the selected date.")
+
+    st.markdown("---")
+    st.markdown("##### Eventi meteorici e fuoriuscite / Storm events and discharges")
+    
+    col_e1, col_e2 = st.columns([1, 2])
+    with col_e1:
+        storm_event = st.radio("Evento meteorico dall'ultima ispezione? / Storm event since last inspection?", ["No", "Sì / Yes"], key="storm_event", horizontal=True)
+    with col_e2:
+        storm_details = st.text_input("Data/ora inizio, durata (ore), mm precipitazione / Start date/time, duration (hrs), mm precipitation:", disabled=(storm_event == "No"), key="storm_details")
+        
+    col_e3, col_e4 = st.columns([1, 2])
+    with col_e3:
+        spill_past = st.radio("Fuoriuscita dall'ultima ispezione? / Discharges since the last inspection?", ["No", "Sì / Yes"], key="spill_past", horizontal=True)
+    with col_e4:
+        spill_past_details = st.text_input("Descrivere la fuoriuscita passata / Describe the past discharge:", disabled=(spill_past == "No"), key="spill_past_details")
+        
+    col_e5, col_e6 = st.columns([1, 2])
+    with col_e5:
+        spill_current = st.radio("Fuoriuscita al momento dell'ispezione? / Discharges at the time of inspection?", ["No", "Sì / Yes"], key="spill_current", horizontal=True)
+    with col_e6:
+        spill_current_details = st.text_input("Descrivere la fuoriuscita attuale / Describe the current discharge:", disabled=(spill_current == "No"), key="spill_current_details")
+
+st.divider()
+st.subheader("Tipologia di Ispezione / Type of Inspection")
+st.write("Seleziona le checklist che vuoi compilare in questa sessione: / Select the checklists you want to complete in this session:")
+col1, col2, col3 = st.columns(3)
+with col1:
+    esc_active = st.checkbox("ESC Inspection Checklist", value=True)
+with col2:
+    cdwm_active = st.checkbox("CDWM Inspection Checklist", value=True)
+with col3:
+    iaq_active = st.checkbox("IAQ Inspection Checklist", value=True)
+
+active_checklists = {}
+if esc_active:
+    active_checklists["ESC Inspection Checklist"] = CHECKLIST_DATA["ESC Inspection Checklist"]
+if cdwm_active:
+    active_checklists["CDWM Inspection Checklist"] = CHECKLIST_DATA["CDWM Inspection Checklist"]
+if iaq_active:
+    active_checklists["IAQ Inspection Checklist"] = CHECKLIST_DATA["IAQ Inspection Checklist"]
+
+if not active_checklists:
+    st.warning("Seleziona almeno una tipologia di ispezione per continuare. / Select at least one type of inspection to continue.")
+else:
+    answered_count = 0
+    no_count = 0
+    applicable_count = 0
+    total_count = 0
+
+    for section, questions in active_checklists.items():
+        section_index = list(CHECKLIST_DATA.keys()).index(section)
+        total_count += len(questions)
+        with st.expander(section, expanded=True):
+            for question_index, question in enumerate(questions):
+                key = f"q_{section_index}_{question_index}"
+                question_col, status_col1, status_col2 = st.columns([2, 1, 1])
+                with question_col:
+                    st.markdown(f"**{question}**")
+                    uploaded_photos = st.file_uploader(
+                        "Foto della verifica / Verification photo",
+                        type=["jpg", "jpeg", "png", "heic", "heif"],
+                        accept_multiple_files=True,
+                        key=f"{key}_photos",
+                        help="Supporta JPG, PNG, e formati iPhone HEIC/HEIF. / Supports JPG, PNG, and iPhone HEIC/HEIF formats.",
+                    )
+                    photos = []
+                    for uploaded_photo in uploaded_photos or []:
+                        photo_data = uploaded_photo.getvalue()
+                        photo_name = uploaded_photo.name
+                        
+                        if photo_name.lower().endswith(('.heic', '.heif')):
+                            try:
+                                img = Image.open(io.BytesIO(photo_data))
+                                img = img.convert("RGB")
+                                temp_io = io.BytesIO()
+                                img.save(temp_io, format="JPEG")
+                                photo_data = temp_io.getvalue()
+                                photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
+                            except Exception as e:
+                                st.warning(f"Impossibile convertire {photo_name}. Potrebbe mancare la libreria 'pillow-heif'.")
+                                
+                        if len(photo_data) > 10 * 1024 * 1024:
+                            st.error(
+                                f"{photo_name}: supera il limite di 10 MB / exceeds 10 MB limit."
+                            )
+                            continue
+                        
+                        photos.append({"name": photo_name, "data": photo_data})
+                        try:
+                            st.image(photo_data, caption=photo_name, width=180)
+                        except Exception:
+                            st.error(f"Errore nella visualizzazione dell'immagine {photo_name}")
+                            
+                with status_col1:
+                    bmp_installed = st.selectbox(
+                        "BMP installata? / BMP installed?",
+                        STATUSES,
+                        key=f"{key}_bmp_inst"
+                    )
+                with status_col2:
+                    bmp_maintenance = st.selectbox(
+                        "Necessaria manutenzione alla BMP? / BMP maintenance required?",
+                        STATUSES,
+                        key=f"{key}_bmp_maint"
+                    )
+                
+                note = st.text_area(
+                    "Note / evidenze / azione correttiva / Notes / evidence / corrective action",
+                    key=f"{key}_note",
+                    height=68,
+                    placeholder="Aggiungi riferimenti, dettagli, responsabile e scadenza se necessario. / Add references, details, responsible person and deadline if necessary.",
+                )
+                st.divider()
+                st.session_state[key] = {
+                    "bmp_installed": bmp_installed,
+                    "bmp_maintenance": bmp_maintenance,
+                    "note": note,
+                    "photos": photos,
+                }
+                
+                if bmp_installed != "Da verificare / TBD" or bmp_maintenance != "Da verificare / TBD":
+                    answered_count += 1
+                if bmp_installed != "N/A" or bmp_maintenance != "N/A":
+                    applicable_count += 1
+                if bmp_installed == "No" or bmp_maintenance == "Sì / Yes":
+                    no_count += 1
+
+    st.subheader("Riepilogo / Summary")
+    metric1, metric2, metric3 = st.columns(3)
+    metric1.metric("Verifiche completate / Completed verifications", f"{answered_count}/{total_count}")
+    metric2.metric("Allerte (No BMP / Sì Manutenzione)", no_count)
+    metric3.metric("Verifiche applicabili / Applicable verifications", applicable_count)
+    st.progress(answered_count / total_count if total_count else 0.0)
+
+    general_notes = st.text_area(
+        "Osservazioni generali / General Notes",
+        key="general_notes",
+        placeholder="Annotazioni conclusive, priorità o riferimenti agli allegati. / Concluding notes, priorities or references to attachments.",
+    )
+
+    if not st.session_state.get("project", "").strip():
+        st.caption("Inserisci il nome del progetto per abilitare il download del PDF. / Enter the project name to enable PDF download.")
+
+    metadata = {
+        "project": st.session_state.get("project", "").strip() or "—",
+        "site": st.session_state.get("site", "").strip() or "—",
+        "address": st.session_state.get("address", "").strip() or "—",
+        "phase": st.session_state.get("phase", "").strip() or "—",
+        "inspection_date": st.session_state.get("inspection_date", date.today()).strftime("%d/%m/%Y"),
+        "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
+        "inspection_type": st.session_state.get("inspection_type", "—"),
+        "inspector": st.session_state.get("inspector", "").strip() or "—",
+        "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
+        "leed_version": st.session_state.get("leed_version", "").strip() or "—",
+        "contact": st.session_state.get("contact", "").strip() or "—",
+        "weather": f"{weather}\nData: {weather_source or 'N/A'}\nSource: Open-Meteo (CC BY 4.0)",
+        "storm_event": f"Sì / Yes: {st.session_state.get('storm_details', '')}" if st.session_state.get('storm_event') == "Sì / Yes" else "No",
+        "spill_past": f"Sì / Yes: {st.session_state.get('spill_past_details', '')}" if st.session_state.get('spill_past') == "Sì / Yes" else "No",
+        "spill_current": f"Sì / Yes: {st.session_state.get('spill_current_details', '')}" if st.session_state.get('spill_current') == "Sì / Yes" else "No",
+        "general_notes": general_notes.strip(),
+    }
+    
+    answers = {
+        f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}": st.session_state.get(
+            f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}",
+            {"bmp_installed": "Da verificare / TBD", "bmp_maintenance": "Da verificare / TBD", "note": "", "photos": []},
+        )
+        for section, questions in active_checklists.items()
+        for question_index, _ in enumerate(questions)
+    }
+
+    if project.strip():
+        pdf_bytes = make_pdf(metadata, answers, active_checklists)
+        safe_name = "".join(
+            char.lower() if char.isalnum() else "_" for char in project.strip()
+        ).strip("_")
+        st.download_button(
+            "Scarica checklist in PDF / Download PDF checklist",
+            data=pdf_bytes,
+            file_name=f"checklist_leed_{safe_name or 'cantiere'}_{inspection_date:%Y%m%d}.pdf",
+            mime="application/pdf",
+            type="primary",
+        )
+    else:
+        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary")
