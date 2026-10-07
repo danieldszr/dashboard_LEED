@@ -73,7 +73,7 @@ INSPECTION_TYPES = (
     "Regolare (mensile) / Regular (monthly)",
     "Prima di un evento meteorico / Pre-storm event",
     "Durante un evento meteorico / During Storm Event",
-    "Dopo un evento meteorico / Post-storm event"
+    "Dopo un evento meteorico / Post-storm event",
     "Altro / Other"
 )
 
