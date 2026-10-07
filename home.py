@@ -110,4 +110,83 @@ RECENT_HISTORY_DAYS = 92
 
 
 class WeatherLookupError(Exception):
-    """Erro
+    pass
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_weather(address: str, inspection_day: str) -> dict:
+    selected_date = date.fromisoformat(inspection_day)
+    today = date.today()
+    if selected_date > today + timedelta(days=15):
+        raise WeatherLookupError(
+            "Le previsioni sono disponibili in una finestra di 16 giorni, incluso oggi. / Forecasts are available in a 16-day window, including today."
+        )
+    if selected_date < today - timedelta(days=RECENT_HISTORY_DAYS):
+        weather_endpoint = "https://archive-api.open-meteo.com/v1/archive"
+        weather_dates = {
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "archivio climatico / climate archive"
+    elif selected_date < today:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "past_days": (today - selected_date).days,
+            "forecast_days": 1,
+        }
+        data_source = "dati meteo recenti / recent weather data"
+    else:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "previsioni meteo / weather forecast"
+
+    try:
+        geocoding_response = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": address, "count": 1, "language": "it", "format": "json"},
+            timeout=10,
+        )
+        geocoding_response.raise_for_status()
+        locations = geocoding_response.json().get("results", [])
+        if not locations:
+            raise WeatherLookupError(
+                "Località non trovata. Prova a inserire città e provincia. / Location not found. Try entering city and province."
+            )
+
+        location = locations[0]
+        weather_response = requests.get(
+            weather_endpoint,
+            params={
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+                **weather_dates,
+                "daily": (
+                    "weather_code,temperature_2m_max,temperature_2m_min,"
+                    "precipitation_sum,wind_speed_10m_max"
+                ),
+                "timezone": "auto",
+            },
+            timeout=15,
+        )
+        weather_response.raise_for_status()
+        daily = weather_response.json().get("daily", {})
+    except WeatherLookupError:
+        raise
+    except (requests.RequestException, ValueError, KeyError) as error:
+        raise WeatherLookupError(
+            "Non è stato possibile recuperare i dati meteo. Controlla la connessione e riprova. / Weather data could not be retrieved. Check your connection and try again."
+        ) from error
+
+    try:
+        day_index = daily.get("time", []).index(inspection_day)
+    except ValueError as error:
+        raise WeatherLookupError(
+            "Il servizio meteo non ha dati disponibili per la data selezionata. / The weather service has no data available for the selected date."
+        ) from error
+
+    def daily_value(field: str):
+        values = daily.get(field, [])
+        return values[day_index] if
