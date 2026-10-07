@@ -17,6 +17,13 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+import io
+from PIL import Image
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
 
 CHECKLIST_DATA = {
     "ESC Inspection Checklist": [
@@ -61,6 +68,13 @@ STATUS_COLORS = {
     "No": colors.HexColor("#FCE1DF"),
     "N/A": colors.HexColor("#E9EDF2"),
 }
+
+INSPECTION_TYPES = (
+    "Regolare (mensile) / Regular (monthly)",
+    "Prima di un evento meteorico / Pre-storm event",
+    "Durante un evento meteorico / During Storm Event",
+    "Dopo un evento meteorico / Post-storm event"
+)
 
 WEATHER_CODES = {
     0: "Sereno / Clear sky",
@@ -253,9 +267,20 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             spaceAfter=0,
         )
     )
+    
+    styles.add(
+        ParagraphStyle(
+            name="SmallCellCenter",
+            parent=styles["BodyText"],
+            fontSize=8,
+            leading=10,
+            spaceAfter=0,
+            alignment=TA_CENTER,
+        )
+    )
 
-    def para(value: object) -> Paragraph:
-        return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles["SmallCell"])
+    def para(value: object, style="SmallCell") -> Paragraph:
+        return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles[style])
 
     story = [
         Paragraph("Checklist ispezione di cantiere LEED / LEED Construction Site Inspection Checklist", styles["ChecklistTitle"]),
@@ -275,6 +300,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         [para("Fase costr. / Phase"), para(metadata["phase"]), para("Referente / Site Contact"), para(metadata["contact"])],
         [para("Indirizzo / Address"), para(metadata["address"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
         [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Ora / Time (Start-End)"), para(metadata["time_range"])],
+        [para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"]), "", ""],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
     metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
@@ -282,14 +308,15 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
-                ("BACKGROUND", (2, 0), (2, -2), colors.HexColor("#EDF3F1")),
+                ("BACKGROUND", (2, 0), (2, -3), colors.HexColor("#EDF3F1")),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("SPAN", (1, 5), (3, 5)), # Merge weather cells
+                ("SPAN", (1, 5), (3, 5)), # Merge inspection type cells
+                ("SPAN", (1, 6), (3, 6)), # Merge weather cells
             ]
         )
     )
@@ -319,16 +346,18 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
     for section, questions in active_checklists.items():
         story.append(Paragraph(escape(section), styles["SectionHeading"]))
-        rows = [[para("Verifica / Verification"), para("Esito / Result"), para("Note-Evidenze / Notes")]]
+        rows = [[para("Verifica / Verification"), para("BMP inst.?"), para("Manut. / Maint.?"), para("Note-Evidenze / Notes")]]
         row_statuses = []
         section_index = list(CHECKLIST_DATA.keys()).index(section)
         for question_index, question in enumerate(questions):
             key = f"q_{section_index}_{question_index}"
             answer = answers.get(key, {})
-            status = answer.get("status", "Da verificare / TBD")
+            bmp_inst = answer.get("bmp_installed", "Da verificare / TBD")
+            bmp_maint = answer.get("bmp_maintenance", "Da verificare / TBD")
             note = answer.get("note", "").strip() or "—"
-            rows.append([para(question), para(status), para(note)])
-            row_statuses.append(status)
+            rows.append([para(question), para(bmp_inst, "SmallCellCenter"), para(bmp_maint, "SmallCellCenter"), para(note)])
+            row_statuses.append((bmp_inst, bmp_maint))
+            
             for photo in answer.get("photos", []):
                 image = ReportImage(
                     BytesIO(photo["data"]),
@@ -338,9 +367,10 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                 )
                 image.hAlign = "LEFT"
                 rows.append(
-                    [[image, para(f"Foto/Photo: {photo['name']}")], "", ""]
+                    [[image, para(f"Foto/Photo: {photo['name']}")], "", "", ""]
                 )
-        table = Table(rows, colWidths=[104 * mm, 25 * mm, 44 * mm], repeatRows=1)
+                
+        table = Table(rows, colWidths=[88 * mm, 21 * mm, 21 * mm, 43 * mm], repeatRows=1)
         table_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B35")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -351,8 +381,39 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             ("TOPPADDING", (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]
-        for row_index, status in enumerate(row_statuses, start=1):
-            table_style.append(("BACKGROUND", (1, row_index), (1, row_index), STATUS_COLORS[status]))
+        
+        row_idx = 1
+        for inst_stat, maint_stat in row_statuses:
+            table_style.append(("BACKGROUND", (1, row_idx), (1, row_idx), STATUS_COLORS[inst_stat]))
+            table_style.append(("BACKGROUND", (2, row_idx), (2, row_idx), STATUS_COLORS[maint_stat]))
+            row_idx += 1
+            
+            # Account for photo rows
+            key = f"q_{section_index}_{row_idx - 2}" # approximate way to count, safer to re-derive key
+            # Actually we already stored the photos in 'answers', we should just use the exact photo count per row.
+            
+        # Re-apply coloring with correct indexing that accounts for photos
+        table_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B35")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]
+        current_row = 1
+        for question_index, _ in enumerate(questions):
+            key = f"q_{section_index}_{question_index}"
+            answer = answers.get(key, {})
+            bmp_inst = answer.get("bmp_installed", "Da verificare / TBD")
+            bmp_maint = answer.get("bmp_maintenance", "Da verificare / TBD")
+            table_style.append(("BACKGROUND", (1, current_row), (1, current_row), STATUS_COLORS[bmp_inst]))
+            table_style.append(("BACKGROUND", (2, current_row), (2, current_row), STATUS_COLORS[bmp_maint]))
+            current_row += 1
+            current_row += len(answer.get("photos", []))
+
         table.setStyle(TableStyle(table_style))
         story.append(table)
 
@@ -379,17 +440,19 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
 st.set_page_config(page_title="Checklist cantiere LEED / LEED Site Checklist", page_icon="✅", layout="wide")
 
-custom_css = """
-<style>
-.stApp { background: #f5f7f5; }
-[data-testid="stMetric"] {
-    background: white; padding: 14px 18px; border-radius: 12px;
-    border: 1px solid #e2e9e5;
-}
-.intro { color: #52645e; margin-top: -0.5rem; }
-</style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    .stApp { background: #f5f7f5; }
+    [data-testid="stMetric"] {
+        background: white; padding: 14px 18px; border-radius: 12px;
+        border: 1px solid #e2e9e5;
+    }
+    .intro { color: #52645e; margin-top: -0.5rem; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.title("Ispezione di cantiere / Construction Site Inspection · Checklist LEED")
 st.markdown(
@@ -421,6 +484,7 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
             start_time = st.time_input("Ora inizio / Start time", value=time(8, 0), key="start_time")
         with col_t2:
             end_time = st.time_input("Ora fine / End time", value=time(17, 0), key="end_time")
+        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
         
         weather = "Non disponibile / Not available"
         weather_source = ""
@@ -499,33 +563,58 @@ else:
         with st.expander(section, expanded=True):
             for question_index, question in enumerate(questions):
                 key = f"q_{section_index}_{question_index}"
-                question_col, status_col = st.columns([4, 1])
+                question_col, status_col1, status_col2 = st.columns([2, 1, 1])
                 with question_col:
                     st.markdown(f"**{question}**")
                     uploaded_photos = st.file_uploader(
                         "Foto della verifica / Verification photo",
-                        type=["jpg", "jpeg", "png"],
+                        type=["jpg", "jpeg", "png", "heic", "heif"],
                         accept_multiple_files=True,
                         key=f"{key}_photos",
-                        help="Le foto vengono mostrate sotto la domanda e inserite nello stesso punto nel PDF. / Photos are shown below the question and inserted in the same place in the PDF.",
+                        help="Supporta JPG, PNG, e formati iPhone HEIC/HEIF. / Supports JPG, PNG, and iPhone HEIC/HEIF formats.",
                     )
                     photos = []
                     for uploaded_photo in uploaded_photos or []:
                         photo_data = uploaded_photo.getvalue()
+                        photo_name = uploaded_photo.name
+                        
+                        # Process HEIC/HEIF images for PDF compatibility
+                        if photo_name.lower().endswith(('.heic', '.heif')):
+                            try:
+                                img = Image.open(io.BytesIO(photo_data))
+                                img = img.convert("RGB")
+                                temp_io = io.BytesIO()
+                                img.save(temp_io, format="JPEG")
+                                photo_data = temp_io.getvalue()
+                                photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
+                            except Exception as e:
+                                st.warning(f"Impossibile convertire {photo_name}. Potrebbe mancare la libreria 'pillow-heif'.")
+                                
                         if len(photo_data) > 10 * 1024 * 1024:
                             st.error(
-                                f"{uploaded_photo.name}: supera il limite di 10 MB / exceeds 10 MB limit."
+                                f"{photo_name}: supera il limite di 10 MB / exceeds 10 MB limit."
                             )
                             continue
-                        photos.append({"name": uploaded_photo.name, "data": photo_data})
-                        st.image(photo_data, caption=uploaded_photo.name, width=180)
-                with status_col:
-                    status = st.selectbox(
-                        "Esito / Result",
+                        
+                        photos.append({"name": photo_name, "data": photo_data})
+                        try:
+                            st.image(photo_data, caption=photo_name, width=180)
+                        except Exception:
+                            st.error(f"Errore nella visualizzazione dell'immagine {photo_name}")
+                            
+                with status_col1:
+                    bmp_installed = st.selectbox(
+                        "BMP installata? / BMP installed?",
                         STATUSES,
-                        key=f"{key}_status",
-                        label_visibility="collapsed",
+                        key=f"{key}_bmp_inst"
                     )
+                with status_col2:
+                    bmp_maintenance = st.selectbox(
+                        "Necessaria manutenzione alla BMP? / BMP maintenance required?",
+                        STATUSES,
+                        key=f"{key}_bmp_maint"
+                    )
+                
                 note = st.text_area(
                     "Note / evidenze / azione correttiva / Notes / evidence / corrective action",
                     key=f"{key}_note",
@@ -534,20 +623,23 @@ else:
                 )
                 st.divider()
                 st.session_state[key] = {
-                    "status": status,
+                    "bmp_installed": bmp_installed,
+                    "bmp_maintenance": bmp_maintenance,
                     "note": note,
                     "photos": photos,
                 }
-                if status != "Da verificare / TBD":
+                
+                if bmp_installed != "Da verificare / TBD" or bmp_maintenance != "Da verificare / TBD":
                     answered_count += 1
-                    applicable_count += status != "N/A"
-                if status == "No":
+                if bmp_installed != "N/A" or bmp_maintenance != "N/A":
+                    applicable_count += 1
+                if bmp_installed == "No" or bmp_maintenance == "Sì / Yes":
                     no_count += 1
 
     st.subheader("Riepilogo / Summary")
     metric1, metric2, metric3 = st.columns(3)
     metric1.metric("Verifiche completate / Completed verifications", f"{answered_count}/{total_count}")
-    metric2.metric("Esiti negativi / Negative results", no_count)
+    metric2.metric("Allerte (No BMP / Sì Manutenzione)", no_count)
     metric3.metric("Verifiche applicabili / Applicable verifications", applicable_count)
     st.progress(answered_count / total_count if total_count else 0.0)
 
@@ -567,12 +659,15 @@ else:
         "phase": st.session_state.get("phase", "").strip() or "—",
         "inspection_date": st.session_state.get("inspection_date", date.today()).strftime("%d/%m/%Y"),
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
+        "inspection_type": st.session_state.get("inspection_type", "—"),
         "inspector": st.session_state.get("inspector", "").strip() or "—",
         "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
         "leed_version": st.session_state.get("leed_version", "").strip() or "—",
         "contact": st.session_state.get("contact", "").strip() or "—",
         "weather": (
-            f"{weather}\nData: {weather_source or 'N/A'}\n"
+            f"{weather}
+Data: {weather_source or 'N/A'}
+"
             "Source: Open-Meteo (CC BY 4.0)"
         ),
         "storm_event": f"Sì / Yes: {st.session_state.get('storm_details', '')}" if st.session_state.get('storm_event') == "Sì / Yes" else "No",
@@ -584,7 +679,7 @@ else:
     answers = {
         f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}": st.session_state.get(
             f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}",
-            {"status": "Da verificare / TBD", "note": "", "photos": []},
+            {"bmp_installed": "Da verificare / TBD", "bmp_maintenance": "Da verificare / TBD", "note": "", "photos": []},
         )
         for section, questions in active_checklists.items()
         for question_index, _ in enumerate(questions)
