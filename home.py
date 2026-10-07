@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from html import escape
 from io import BytesIO
 
+import requests
 import streamlit as st
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -10,6 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Paragraph,
+    Image as ReportImage,
     SimpleDocTemplate,
     Spacer,
     Table,
@@ -81,6 +83,152 @@ STATUS_COLORS = {
     "No": colors.HexColor("#FCE1DF"),
     "N/A": colors.HexColor("#E9EDF2"),
 }
+
+WEATHER_CODES = {
+    0: "Sereno",
+    1: "Prevalentemente sereno",
+    2: "Parzialmente nuvoloso",
+    3: "Coperto",
+    45: "Nebbia",
+    48: "Nebbia con brina",
+    51: "Pioviggine leggera",
+    53: "Pioviggine moderata",
+    55: "Pioviggine intensa",
+    56: "Pioviggine gelata leggera",
+    57: "Pioviggine gelata intensa",
+    61: "Pioggia debole",
+    63: "Pioggia moderata",
+    65: "Pioggia intensa",
+    66: "Pioggia gelata debole",
+    67: "Pioggia gelata intensa",
+    71: "Neve debole",
+    73: "Neve moderata",
+    75: "Neve intensa",
+    77: "Granuli di neve",
+    80: "Rovesci deboli",
+    81: "Rovesci moderati",
+    82: "Rovesci violenti",
+    85: "Rovesci di neve deboli",
+    86: "Rovesci di neve intensi",
+    95: "Temporale",
+    96: "Temporale con grandine debole",
+    99: "Temporale con grandine intensa",
+}
+RECENT_HISTORY_DAYS = 92
+
+
+class WeatherLookupError(Exception):
+    """Errore recuperabile nella ricerca della località o dei dati meteo."""
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_weather(address: str, inspection_day: str) -> dict:
+    selected_date = date.fromisoformat(inspection_day)
+    today = date.today()
+    if selected_date > today + timedelta(days=15):
+        raise WeatherLookupError(
+            "Le previsioni sono disponibili in una finestra di 16 giorni, incluso oggi."
+        )
+    if selected_date < today - timedelta(days=RECENT_HISTORY_DAYS):
+        weather_endpoint = "https://archive-api.open-meteo.com/v1/archive"
+        weather_dates = {
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "archivio climatico"
+    elif selected_date < today:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "past_days": (today - selected_date).days,
+            "forecast_days": 1,
+        }
+        data_source = "dati meteo recenti"
+    else:
+        weather_endpoint = "https://api.open-meteo.com/v1/forecast"
+        weather_dates = {
+            "start_date": inspection_day,
+            "end_date": inspection_day,
+        }
+        data_source = "previsioni meteo"
+
+    try:
+        geocoding_response = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": address, "count": 1, "language": "it", "format": "json"},
+            timeout=10,
+        )
+        geocoding_response.raise_for_status()
+        locations = geocoding_response.json().get("results", [])
+        if not locations:
+            raise WeatherLookupError(
+                "Località non trovata. Prova a inserire città e provincia."
+            )
+
+        location = locations[0]
+        weather_response = requests.get(
+            weather_endpoint,
+            params={
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+                **weather_dates,
+                "daily": (
+                    "weather_code,temperature_2m_max,temperature_2m_min,"
+                    "precipitation_sum,wind_speed_10m_max"
+                ),
+                "timezone": "auto",
+            },
+            timeout=15,
+        )
+        weather_response.raise_for_status()
+        daily = weather_response.json().get("daily", {})
+    except WeatherLookupError:
+        raise
+    except (requests.RequestException, ValueError, KeyError) as error:
+        raise WeatherLookupError(
+            "Non è stato possibile recuperare i dati meteo. Controlla la connessione "
+            "e riprova."
+        ) from error
+
+    try:
+        day_index = daily.get("time", []).index(inspection_day)
+    except ValueError as error:
+        raise WeatherLookupError(
+            "Il servizio meteo non ha dati disponibili per la data selezionata."
+        ) from error
+
+    def daily_value(field: str):
+        values = daily.get(field, [])
+        return values[day_index] if day_index < len(values) else None
+
+    code = daily_value("weather_code")
+    description = WEATHER_CODES.get(code, f"Condizioni variabili (codice {code})")
+    location_name = ", ".join(
+        part for part in (location.get("name"), location.get("admin1"), location.get("country")) if part
+    )
+    max_temp = daily_value("temperature_2m_max")
+    min_temp = daily_value("temperature_2m_min")
+    precipitation = daily_value("precipitation_sum")
+    max_wind = daily_value("wind_speed_10m_max")
+
+    def formatted(value, suffix: str) -> str:
+        return f"{value:g}{suffix}" if isinstance(value, (int, float)) else "n/d"
+
+    summary = (
+        f"{location_name} — {description}; "
+        f"max {formatted(max_temp, ' °C')}, min {formatted(min_temp, ' °C')}; "
+        f"precipitazioni {formatted(precipitation, ' mm')}; "
+        f"vento max {formatted(max_wind, ' km/h')}."
+    )
+    return {
+        "summary": summary,
+        "location": location_name,
+        "description": description,
+        "data_source": data_source,
+        "max_temp": max_temp,
+        "min_temp": min_temp,
+        "precipitation": precipitation,
+        "max_wind": max_wind,
+    }
 
 
 def make_pdf(metadata: dict, answers: dict) -> bytes:
@@ -176,6 +324,17 @@ def make_pdf(metadata: dict, answers: dict) -> bytes:
             note = answer.get("note", "").strip() or "—"
             rows.append([para(question), para(status), para(note)])
             row_statuses.append(status)
+            for photo in answer.get("photos", []):
+                image = ReportImage(
+                    BytesIO(photo["data"]),
+                    width=96 * mm,
+                    height=54 * mm,
+                    kind="bound",
+                )
+                image.hAlign = "LEFT"
+                rows.append(
+                    [[image, para(f"Foto: {photo['name']}")], "", ""]
+                )
         table = Table(rows, colWidths=[104 * mm, 25 * mm, 44 * mm], repeatRows=1)
         table_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B35")),
@@ -252,7 +411,28 @@ with st.expander("Dati del progetto e dell'ispezione", expanded=True):
         leed_version = st.text_input("Versione / sistema LEED", placeholder="Es. BD+C v4.1", key="leed_version")
     with third:
         contact = st.text_input("Referente cantiere", key="contact")
-        weather = st.text_input("Meteo / condizioni", key="weather")
+    weather = "Non disponibile"
+    weather_source = ""
+    if address.strip():
+        try:
+            with st.spinner("Recupero automatico del meteo..."):
+                weather_data = fetch_weather(address.strip(), inspection_date.isoformat())
+            weather = weather_data["summary"]
+            weather_source = weather_data["data_source"]
+            weather_label = (
+                "Meteo storico stimato"
+                if inspection_date < date.today()
+                else "Meteo previsto"
+            )
+            st.success(f"**{weather_label}:** {weather}")
+            st.caption(
+                f"Fonte: Open-Meteo, {weather_source}. I dati passati sono stime "
+                "retrospettive del modello, non misure ufficiali della stazione locale."
+            )
+        except WeatherLookupError as error:
+            st.warning(str(error))
+    else:
+        st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata.")
 
 answered_count = 0
 no_count = 0
@@ -264,6 +444,23 @@ for section_index, (section, questions) in enumerate(CHECKLIST):
             question_col, status_col = st.columns([4, 1])
             with question_col:
                 st.markdown(f"**{question}**")
+                uploaded_photos = st.file_uploader(
+                    "Foto della verifica",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=True,
+                    key=f"{key}_photos",
+                    help="Le foto vengono mostrate sotto la domanda e inserite nello stesso punto nel PDF.",
+                )
+                photos = []
+                for uploaded_photo in uploaded_photos or []:
+                    photo_data = uploaded_photo.getvalue()
+                    if len(photo_data) > 10 * 1024 * 1024:
+                        st.error(
+                            f"{uploaded_photo.name}: supera il limite di 10 MB e non verrà aggiunta."
+                        )
+                        continue
+                    photos.append({"name": uploaded_photo.name, "data": photo_data})
+                    st.image(photo_data, caption=uploaded_photo.name, width=180)
             with status_col:
                 status = st.selectbox(
                     "Esito",
@@ -278,7 +475,11 @@ for section_index, (section, questions) in enumerate(CHECKLIST):
                 placeholder="Aggiungi riferimenti, responsabile e scadenza se necessario.",
             )
             st.divider()
-            st.session_state[key] = {"status": status, "note": note}
+            st.session_state[key] = {
+                "status": status,
+                "note": note,
+                "photos": photos,
+            }
             if status != "Da verificare":
                 answered_count += 1
                 applicable_count += status != "N/A"
@@ -310,13 +511,16 @@ metadata = {
     "inspector": st.session_state.get("inspector", "").strip() or "—",
     "leed_version": st.session_state.get("leed_version", "").strip() or "—",
     "contact": st.session_state.get("contact", "").strip() or "—",
-    "weather": st.session_state.get("weather", "").strip() or "—",
+    "weather": (
+        f"{weather}\nTipo dati: {weather_source or 'non disponibile'}\n"
+        "Fonte: Open-Meteo (CC BY 4.0)"
+    ),
     "general_notes": general_notes.strip(),
 }
 answers = {
     f"q_{section_index}_{question_index}": st.session_state.get(
         f"q_{section_index}_{question_index}",
-        {"status": "Da verificare", "note": ""},
+        {"status": "Da verificare", "note": "", "photos": []},
     )
     for section_index, (_, questions) in enumerate(CHECKLIST)
     for question_index, _ in enumerate(questions)
