@@ -296,8 +296,8 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     ]
 
     metadata_rows = [
-        [para("Progetto / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
-        [para("Cantiere-sito / Site"), para(metadata["site"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
+        [para("Commessa / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
+        [para(metadata["site"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
         [para("Fase costr. / Phase"), para(metadata["phase"]), para("Referente / Site Contact"), para(metadata["contact"])],
         [para("Indirizzo / Address"), para(metadata["address"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
         [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Ora / Time (Start-End)"), para(metadata["time_range"])],
