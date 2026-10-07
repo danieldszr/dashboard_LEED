@@ -433,7 +433,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.title("Ispezione di cantiere / Construction Site Inspection · Checklist LEED")
+st.title("Ispezione di cantiere / Construction Site Inspection · LEED")
 st.markdown(
     '<p class="intro">Compila le verifiche, registra evidenze e azioni correttive, poi scarica il verbale in PDF. / '
     "Complete the verifications, record evidence and corrective actions, then download the PDF report.</p>",
