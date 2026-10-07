@@ -242,7 +242,7 @@ def make_pdf(metadata: dict, answers: dict) -> bytes:
         leftMargin=17 * mm,
         topMargin=20 * mm,
         bottomMargin=18 * mm,
-        title="Checklist ispezione di cantiere LEED-MERDA",
+        title="Checklist ispezione di cantiere LEED",
         author="Dashboard checklist LEED",
     )
     styles = getSampleStyleSheet()
@@ -389,7 +389,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Ispezione di cantiere · Checklist LEED")
+st.title("Ispezione di cantiere · Checklist LEED-merda")
 st.markdown(
     '<p class="intro">Compila le verifiche, registra evidenze e azioni correttive, '
     "poi scarica il verbale in PDF.</p>",
