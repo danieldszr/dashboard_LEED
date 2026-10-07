@@ -20,65 +20,77 @@ from reportlab.platypus import (
 
 CHECKLIST_DATA = {
     "ESC Inspection Checklist": [
-        "C’è stato un evento meteorico dall’ultima ispezione? / Has there been a storm event since last inspection? (Se sì, fornire in Note: Data e ora inizio evento, Durata in ore, Quantità precipitazione in mm)",
-        "C’è stata fuoriuscita dall’ultima ispezione? / Have any discharges occurred since the last inspection? (Se sì, descrivere in Note)",
-        "C’è fuoriuscita al momento dell’ispezione? / Are there any discharges at the time of inspection? (Se sì, descrivere in Note)",
-        "Sono attive misure per limitare erosione, sedimentazione e trasporto di polveri fuori dal cantiere?",
-        "Gli scarichi e il deflusso delle acque meteoriche sono protetti e gestiti secondo il piano di cantiere?",
-        "Materiali e prodotti sono stoccati in modo da prevenire contaminazione del suolo o delle acque?",
-        "Le misure di protezione vengono controllate dopo piogge o modifiche alle lavorazioni?"
+        "Recinzione (SE- 1) / Perimeter control: silt fence",
+        "Pulizia delle strade (SE-7) / Street Sweeping and Vacuuming",
+        "Protezione tombini (SE-10) / Storm drain inlet protection",
+        "Entrata-uscita stabilizzata (TC-1) / Stabilized Construction Entry-Exit",
+        "Piste di cantiere stabilizzata (TC-2) / Stabilized Construction roadway",
+        "Lavaggio ruote (TC-3) / Tire wash",
+        "Scarico e stoccaggio materiali (WM-1) / Material delivery and storage",
+        "Gestione dei cumuli (WM-3) / Stockpile management",
+        "Gestione dei rifiuti solidi (WM-5) / Solid waste management",
+        "Lavaggio del calcestruzzo (WM-8) / Concrete waste management",
+        "Rifornimento di veicoli e mezzi (NS-9) / Vehicle and equipment fueling"
     ],
     "CDWM Inspection Checklist": [
-        "Le aree per raccolta differenziata sono segnalate, accessibili e mantenute in ordine?",
-        "I rifiuti sono separati per flusso e conferiti a trasportatori o impianti autorizzati?",
-        "Sono conservati formulari, pesate, ricevute o altri documenti di tracciabilità dei rifiuti?",
-        "Le schede tecniche, le dichiarazioni ambientali e le evidenze richieste per i materiali sono reperibili?"
+        "Identificazione di un’area dedicata all’interno del cantiere destinata allo stoccaggio e separazione dei rifiuti di costruzione. / Identification of a dedicated area inside the construction site for the storage and separation of construction waste",
+        "I rifiuti pericolosi sono stoccati separatamente e opportunamente segnalati. / Hazardous waste is stored separately and properly reported.",
+        "I cassoni/ cumuli omogeni dei rifiuti sono opportunamente contrassegnati da cartellonistica indicante il codice CER. / Homogeneous waste bins are properly identified by signage indicating the CER code.",
+        "L’area di raccolta dei rifiuti è mantenuta pulita e ordinata. / Waste collection area is properly kept clean and organized.",
+        "Cestini per la raccolta differenziata dei rifiuti prodotti dai lavoratori sono presenti in sito. / Bins for recycling waste produced by workers are present on site."
     ],
     "IAQ Inspection Checklist": [
-        "I materiali assorbenti e i condotti HVAC sono protetti da polvere e umidità?",
-        "Le prese d'aria e gli impianti sono protetti durante le attività che generano polveri o contaminanti?",
-        "Le aree di lavoro sono pulite e i materiali a emissione sono gestiti secondo il piano previsto?",
-        "È previsto un controllo finale e, se applicabile, il flush-out o il test della qualità dell'aria?"
+        "I prodotti chimici sono stoccati in contenitori sigillati e chiaramente identificati. / Chemicals are stored in sealed and clearly identified containers",
+        "I prodotti chimici sono stoccati in aree ventilate e/o a diretto contatto con l’esterno. / Chemicals are stored in naturally ventilated areas and/or directly linked to outside areas.",
+        "I materiali sono forniti in cantiere con proprio imballaggio. / Building materials are delivered on site with proper packaging.",
+        "I materiali isolanti, cartongessi, etc. sono stoccati in luoghi asciutti, coperti e sollevati da terra ai fini di proteggerli dall’umidità e sporcizia. / Porous and absorbing materials (insulation, plaster boards,..) are stored in dry covered areas, packaged and raised up from the floor to protect them from dirt and moisture.",
+        "Utilizzo di appropriate procedure anti-polvere. / Procedures to avoid dust are implemented.",
+        "Delimitazione aree per lavorazioni che producono polvere. / Delimitation of area for activities that produce dust.",
+        "Divieto di fumo correttamente indicato. / Smoking ban is clearly indicated.",
+        "Aree fumatori delimitate. / Bounded smoking areas.",
+        "Le apparecchiature degli impianti HVAC sono consegnate sigillate con i propri imballaggi. / HVAC systems equipment and components are delivered on site with proper packaging.",
+        "Le apparecchiature ed i canali sono debitamente stoccati prima dell'installazione in modo da prevenire contaminazione da polveri e umidità. / HVAC systems equipment and components (ducts) are properly stored on site before installation to prevent dust and moisture contamination.",
+        "Le apparecchiature ed i canali sono debitamente sigillati con plastica o simile dopo l'installazione a prevenire contaminazione da polveri e umidità. / HVAC systems equipment and components (ducts) are properly sealed with taped plastic after installation to prevent dust and moisture contamination."
     ]
 }
 
-STATUSES = ("Da verificare", "Sì", "No", "N/A")
+STATUSES = ("Da verificare / TBD", "Sì / Yes", "No", "N/A")
 STATUS_COLORS = {
-    "Da verificare": colors.HexColor("#FFF0C2"),
-    "Sì": colors.HexColor("#DDF3E5"),
+    "Da verificare / TBD": colors.HexColor("#FFF0C2"),
+    "Sì / Yes": colors.HexColor("#DDF3E5"),
     "No": colors.HexColor("#FCE1DF"),
     "N/A": colors.HexColor("#E9EDF2"),
 }
 
 WEATHER_CODES = {
-    0: "Sereno",
-    1: "Prevalentemente sereno",
-    2: "Parzialmente nuvoloso",
-    3: "Coperto",
-    45: "Nebbia",
-    48: "Nebbia con brina",
-    51: "Pioviggine leggera",
-    53: "Pioviggine moderata",
-    55: "Pioviggine intensa",
-    56: "Pioviggine gelata leggera",
-    57: "Pioviggine gelata intensa",
-    61: "Pioggia debole",
-    63: "Pioggia moderata",
-    65: "Pioggia intensa",
-    66: "Pioggia gelata debole",
-    67: "Pioggia gelata intensa",
-    71: "Neve debole",
-    73: "Neve moderata",
-    75: "Neve intensa",
-    77: "Granuli di neve",
-    80: "Rovesci deboli",
-    81: "Rovesci moderati",
-    82: "Rovesci violenti",
-    85: "Rovesci di neve deboli",
-    86: "Rovesci di neve intensi",
-    95: "Temporale",
-    96: "Temporale con grandine debole",
-    99: "Temporale con grandine intensa",
+    0: "Sereno / Clear sky",
+    1: "Prevalentemente sereno / Mainly clear",
+    2: "Parzialmente nuvoloso / Partly cloudy",
+    3: "Coperto / Overcast",
+    45: "Nebbia / Fog",
+    48: "Nebbia con brina / Depositing rime fog",
+    51: "Pioviggine leggera / Light drizzle",
+    53: "Pioviggine moderata / Moderate drizzle",
+    55: "Pioviggine intensa / Dense drizzle",
+    56: "Pioviggine gelata leggera / Light freezing drizzle",
+    57: "Pioviggine gelata intensa / Dense freezing drizzle",
+    61: "Pioggia debole / Slight rain",
+    63: "Pioggia moderata / Moderate rain",
+    65: "Pioggia intensa / Heavy rain",
+    66: "Pioggia gelata debole / Light freezing rain",
+    67: "Pioggia gelata intensa / Heavy freezing rain",
+    71: "Neve debole / Slight snow fall",
+    73: "Neve moderata / Moderate snow fall",
+    75: "Neve intensa / Heavy snow fall",
+    77: "Granuli di neve / Snow grains",
+    80: "Rovesci deboli / Slight rain showers",
+    81: "Rovesci moderati / Moderate rain showers",
+    82: "Rovesci violenti / Violent rain showers",
+    85: "Rovesci di neve deboli / Slight snow showers",
+    86: "Rovesci di neve intensi / Heavy snow showers",
+    95: "Temporale / Thunderstorm",
+    96: "Temporale con grandine debole / Thunderstorm with slight hail",
+    99: "Temporale con grandine intensa / Thunderstorm with heavy hail",
 }
 RECENT_HISTORY_DAYS = 92
 
@@ -93,7 +105,7 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
     today = date.today()
     if selected_date > today + timedelta(days=15):
         raise WeatherLookupError(
-            "Le previsioni sono disponibili in una finestra di 16 giorni, incluso oggi."
+            "Le previsioni sono disponibili in una finestra di 16 giorni, incluso oggi. / Forecasts are available in a 16-day window, including today."
         )
     if selected_date < today - timedelta(days=RECENT_HISTORY_DAYS):
         weather_endpoint = "https://archive-api.open-meteo.com/v1/archive"
@@ -101,21 +113,21 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
             "start_date": inspection_day,
             "end_date": inspection_day,
         }
-        data_source = "archivio climatico"
+        data_source = "archivio climatico / climate archive"
     elif selected_date < today:
         weather_endpoint = "https://api.open-meteo.com/v1/forecast"
         weather_dates = {
             "past_days": (today - selected_date).days,
             "forecast_days": 1,
         }
-        data_source = "dati meteo recenti"
+        data_source = "dati meteo recenti / recent weather data"
     else:
         weather_endpoint = "https://api.open-meteo.com/v1/forecast"
         weather_dates = {
             "start_date": inspection_day,
             "end_date": inspection_day,
         }
-        data_source = "previsioni meteo"
+        data_source = "previsioni meteo / weather forecast"
 
     try:
         geocoding_response = requests.get(
@@ -127,7 +139,7 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
         locations = geocoding_response.json().get("results", [])
         if not locations:
             raise WeatherLookupError(
-                "Località non trovata. Prova a inserire città e provincia."
+                "Località non trovata. Prova a inserire città e provincia. / Location not found. Try entering city and province."
             )
 
         location = locations[0]
@@ -151,15 +163,14 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
         raise
     except (requests.RequestException, ValueError, KeyError) as error:
         raise WeatherLookupError(
-            "Non è stato possibile recuperare i dati meteo. Controlla la connessione "
-            "e riprova."
+            "Non è stato possibile recuperare i dati meteo. Controlla la connessione e riprova. / Weather data could not be retrieved. Check your connection and try again."
         ) from error
 
     try:
         day_index = daily.get("time", []).index(inspection_day)
     except ValueError as error:
         raise WeatherLookupError(
-            "Il servizio meteo non ha dati disponibili per la data selezionata."
+            "Il servizio meteo non ha dati disponibili per la data selezionata. / The weather service has no data available for the selected date."
         ) from error
 
     def daily_value(field: str):
@@ -167,7 +178,7 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
         return values[day_index] if day_index < len(values) else None
 
     code = daily_value("weather_code")
-    description = WEATHER_CODES.get(code, f"Condizioni variabili (codice {code})")
+    description = WEATHER_CODES.get(code, f"Condizioni variabili / Variable conditions (code {code})")
     location_name = ", ".join(
         part for part in (location.get("name"), location.get("admin1"), location.get("country")) if part
     )
@@ -182,8 +193,8 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
     summary = (
         f"{location_name} — {description}; "
         f"max {formatted(max_temp, ' °C')}, min {formatted(min_temp, ' °C')}; "
-        f"precipitazioni {formatted(precipitation, ' mm')}; "
-        f"vento max {formatted(max_wind, ' km/h')}."
+        f"precipitazioni / precipitation {formatted(precipitation, ' mm')}; "
+        f"vento / wind max {formatted(max_wind, ' km/h')}."
     )
     return {
         "summary": summary,
@@ -206,7 +217,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         leftMargin=17 * mm,
         topMargin=20 * mm,
         bottomMargin=18 * mm,
-        title="Checklist ispezione di cantiere LEED",
+        title="Checklist ispezione di cantiere LEED / LEED Construction Site Inspection Checklist",
         author="Dashboard checklist LEED",
     )
     styles = getSampleStyleSheet()
@@ -215,8 +226,8 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             name="ChecklistTitle",
             parent=styles["Title"],
             fontName="Helvetica-Bold",
-            fontSize=18,
-            leading=22,
+            fontSize=16,
+            leading=20,
             alignment=TA_CENTER,
             textColor=colors.HexColor("#173B35"),
             spaceAfter=5 * mm,
@@ -247,22 +258,24 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles["SmallCell"])
 
     story = [
-        Paragraph("Checklist ispezione di cantiere LEED", styles["ChecklistTitle"]),
+        Paragraph("Checklist ispezione di cantiere LEED / LEED Construction Site Inspection Checklist", styles["ChecklistTitle"]),
         Paragraph(
             "Strumento operativo di supporto. Verificare sempre i requisiti applicabili "
-            "nella versione LEED, nei crediti perseguiti e nei documenti approvati del progetto.",
+            "nella versione LEED, nei crediti perseguiti e nei documenti approvati del progetto. / "
+            "Supporting operational tool. Always verify the applicable requirements in the LEED version, "
+            "pursued credits, and approved project documents.",
             styles["BodyText"],
         ),
         Spacer(1, 4 * mm),
     ]
 
     metadata_rows = [
-        [para("Progetto"), para(metadata["project"]), para("Ispettore"), para(metadata["inspector"])],
-        [para("Cantiere / sito"), para(metadata["site"]), para("Email ispettore"), para(metadata["inspector_email"])],
-        [para("Fase costruttiva"), para(metadata["phase"]), para("Referente cantiere"), para(metadata["contact"])],
-        [para("Indirizzo"), para(metadata["address"]), para("Versione LEED"), para(metadata["leed_version"])],
-        [para("Data ispezione"), para(metadata["inspection_date"]), para("Ora inizio / fine"), para(metadata["time_range"])],
-        [para("Meteo"), para(metadata["weather"]), "", ""],
+        [para("Progetto / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
+        [para("Cantiere-sito / Site"), para(metadata["site"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
+        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Referente / Site Contact"), para(metadata["contact"])],
+        [para("Indirizzo / Address"), para(metadata["address"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
+        [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Ora / Time (Start-End)"), para(metadata["time_range"])],
+        [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
     metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
     metadata_table.setStyle(
@@ -282,15 +295,37 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     )
     story.extend([metadata_table, Spacer(1, 3 * mm)])
 
+    # Eventi meteorici e fuoriuscite Table
+    events_rows = [
+        [para("Evento meteorico dall'ultima ispezione? / Storm event since last inspection?"), para(metadata["storm_event"])],
+        [para("Fuoriuscita dall'ultima ispezione? / Discharges since the last inspection?"), para(metadata["spill_past"])],
+        [para("Fuoriuscita al momento dell'ispezione? / Discharges at the time of inspection?"), para(metadata["spill_current"])],
+    ]
+    events_table = Table(events_rows, colWidths=[80 * mm, 90 * mm])
+    events_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.extend([events_table, Spacer(1, 3 * mm)])
+
     for section, questions in active_checklists.items():
         story.append(Paragraph(escape(section), styles["SectionHeading"]))
-        rows = [[para("Verifica"), para("Esito"), para("Note / evidenze")]]
+        rows = [[para("Verifica / Verification"), para("Esito / Result"), para("Note-Evidenze / Notes")]]
         row_statuses = []
         section_index = list(CHECKLIST_DATA.keys()).index(section)
         for question_index, question in enumerate(questions):
             key = f"q_{section_index}_{question_index}"
             answer = answers.get(key, {})
-            status = answer.get("status", "Da verificare")
+            status = answer.get("status", "Da verificare / TBD")
             note = answer.get("note", "").strip() or "—"
             rows.append([para(question), para(status), para(note)])
             row_statuses.append(status)
@@ -303,7 +338,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                 )
                 image.hAlign = "LEFT"
                 rows.append(
-                    [[image, para(f"Foto: {photo['name']}")], "", ""]
+                    [[image, para(f"Foto/Photo: {photo['name']}")], "", ""]
                 )
         table = Table(rows, colWidths=[104 * mm, 25 * mm, 44 * mm], repeatRows=1)
         table_style = [
@@ -323,10 +358,10 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
     story.extend(
         [
-            Paragraph("Osservazioni generali", styles["SectionHeading"]),
-            para(metadata["general_notes"] or "Nessuna osservazione aggiuntiva."),
+            Paragraph("Osservazioni generali / General Notes", styles["SectionHeading"]),
+            para(metadata["general_notes"] or "Nessuna osservazione aggiuntiva. / No additional notes."),
             Spacer(1, 6 * mm),
-            para("Firma ispettore: ____________________________________"),
+            para("Firma ispettore / Inspector Signature: ____________________________________"),
         ]
     )
 
@@ -334,87 +369,106 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#68756F"))
-        canvas.drawString(17 * mm, 10 * mm, "Checklist cantiere LEED - documento di supporto")
-        canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina {document.page}")
+        canvas.drawString(17 * mm, 10 * mm, "Checklist cantiere LEED - doc. di supporto / LEED site checklist - support doc.")
+        canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina / Page {document.page}")
         canvas.restoreState()
 
     doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     return buffer.getvalue()
 
 
-st.set_page_config(page_title="Checklist cantiere LEED", page_icon="✅", layout="wide")
-st.markdown(
-    """
-    <style>
-    .stApp { background: #f5f7f5; }
-    [data-testid="stMetric"] {
-        background: white; padding: 14px 18px; border-radius: 12px;
-        border: 1px solid #e2e9e5;
-    }
-    .intro { color: #52645e; margin-top: -0.5rem; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.set_page_config(page_title="Checklist cantiere LEED / LEED Site Checklist", page_icon="✅", layout="wide")
 
-st.title("Ispezione di cantiere · Checklist LEED")
+custom_css = """
+<style>
+.stApp { background: #f5f7f5; }
+[data-testid="stMetric"] {
+    background: white; padding: 14px 18px; border-radius: 12px;
+    border: 1px solid #e2e9e5;
+}
+.intro { color: #52645e; margin-top: -0.5rem; }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+
+st.title("Ispezione di cantiere / Construction Site Inspection · Checklist LEED")
 st.markdown(
-    '<p class="intro">Compila le verifiche, registra evidenze e azioni correttive, '
-    "poi scarica il verbale in PDF.</p>",
+    '<p class="intro">Compila le verifiche, registra evidenze e azioni correttive, poi scarica il verbale in PDF. / '
+    "Complete the verifications, record evidence and corrective actions, then download the PDF report.</p>",
     unsafe_allow_html=True,
 )
 st.info(
-    "Checklist generale di supporto: non sostituisce i requisiti ufficiali LEED, "
-    "il piano di progetto o le indicazioni del LEED AP. Adattare le verifiche alla "
-    "versione e ai crediti effettivamente perseguiti."
+    "Checklist generale di supporto: non sostituisce i requisiti ufficiali LEED, il piano di progetto o le indicazioni del LEED AP. / "
+    "General support checklist: it does not replace the official LEED requirements, the project plan or the LEED AP indications."
 )
 
-with st.expander("Dati del progetto e dell'ispezione", expanded=True):
+with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Data", expanded=True):
     first, second, third = st.columns(3)
     with first:
-        project = st.text_input("Nome progetto *", key="project")
-        site = st.text_input("Cantiere / sito", key="site")
-        phase = st.text_input("Fase costruttiva", key="phase")
-        address = st.text_input("Indirizzo", key="address")
+        project = st.text_input("Nome progetto / Project Name *", key="project")
+        site = st.text_input("Cantiere-sito / Site", key="site")
+        phase = st.text_input("Fase costruttiva / Construction Phase", key="phase")
+        address = st.text_input("Indirizzo / Address", key="address")
     with second:
-        inspector = st.text_input("Ispettore *", key="inspector")
-        inspector_email = st.text_input("Email ispettore", key="inspector_email")
-        contact = st.text_input("Referente cantiere", key="contact")
-        leed_version = st.text_input("Versione / sistema LEED", placeholder="Es. BD+C v4.1", key="leed_version")
+        inspector = st.text_input("Ispettore / Inspector *", key="inspector")
+        inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
+        contact = st.text_input("Referente cantiere / Site Contact", key="contact")
+        leed_version = st.text_input("Versione-sistema LEED / LEED Version", placeholder="Es. BD+C v4.1", key="leed_version")
     with third:
-        inspection_date = st.date_input("Data ispezione", value=date.today(), key="inspection_date")
+        inspection_date = st.date_input("Data ispezione / Inspection Date", value=date.today(), key="inspection_date")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            start_time = st.time_input("Ora inizio", value=time(8, 0), key="start_time")
+            start_time = st.time_input("Ora inizio / Start time", value=time(8, 0), key="start_time")
         with col_t2:
-            end_time = st.time_input("Ora fine", value=time(17, 0), key="end_time")
+            end_time = st.time_input("Ora fine / End time", value=time(17, 0), key="end_time")
         
-        weather = "Non disponibile"
+        weather = "Non disponibile / Not available"
         weather_source = ""
         if address.strip():
             try:
-                with st.spinner("Recupero automatico del meteo..."):
+                with st.spinner("Recupero automatico del meteo... / Fetching weather automatically..."):
                     weather_data = fetch_weather(address.strip(), inspection_date.isoformat())
                 weather = weather_data["summary"]
                 weather_source = weather_data["data_source"]
                 weather_label = (
-                    "Meteo storico stimato"
+                    "Meteo storico stimato / Estimated historical weather"
                     if inspection_date < date.today()
-                    else "Meteo previsto"
+                    else "Meteo previsto / Weather forecast"
                 )
                 st.success(f"**{weather_label}:** {weather}")
                 st.caption(
-                    f"Fonte: Open-Meteo, {weather_source}. I dati passati sono stime "
-                    "retrospettive del modello, non misure ufficiali della stazione locale."
+                    f"Fonte / Source: Open-Meteo, {weather_source}. I dati passati sono stime "
+                    "retrospettive del modello / Past data are retrospective model estimates."
                 )
             except WeatherLookupError as error:
                 st.warning(str(error))
         else:
-            st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata.")
+            st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata. / Enter the address to automatically retrieve the weather for the selected date.")
+
+    st.markdown("---")
+    st.markdown("##### Eventi meteorici e fuoriuscite / Storm events and discharges")
+    
+    col_e1, col_e2 = st.columns([1, 2])
+    with col_e1:
+        storm_event = st.radio("Evento meteorico dall'ultima ispezione? / Storm event since last inspection?", ["No", "Sì / Yes"], key="storm_event", horizontal=True)
+    with col_e2:
+        storm_details = st.text_input("Data/ora inizio, durata (ore), mm precipitazione / Start date/time, duration (hrs), mm precipitation:", disabled=(storm_event == "No"), key="storm_details")
+        
+    col_e3, col_e4 = st.columns([1, 2])
+    with col_e3:
+        spill_past = st.radio("Fuoriuscita dall'ultima ispezione? / Discharges since the last inspection?", ["No", "Sì / Yes"], key="spill_past", horizontal=True)
+    with col_e4:
+        spill_past_details = st.text_input("Descrivere la fuoriuscita passata / Describe the past discharge:", disabled=(spill_past == "No"), key="spill_past_details")
+        
+    col_e5, col_e6 = st.columns([1, 2])
+    with col_e5:
+        spill_current = st.radio("Fuoriuscita al momento dell'ispezione? / Discharges at the time of inspection?", ["No", "Sì / Yes"], key="spill_current", horizontal=True)
+    with col_e6:
+        spill_current_details = st.text_input("Descrivere la fuoriuscita attuale / Describe the current discharge:", disabled=(spill_current == "No"), key="spill_current_details")
 
 st.divider()
-st.subheader("Tipologia di Ispezione")
-st.write("Seleziona le checklist che vuoi compilare in questa sessione:")
+st.subheader("Tipologia di Ispezione / Type of Inspection")
+st.write("Seleziona le checklist che vuoi compilare in questa sessione: / Select the checklists you want to complete in this session:")
 col1, col2, col3 = st.columns(3)
 with col1:
     esc_active = st.checkbox("ESC Inspection Checklist", value=True)
@@ -432,7 +486,7 @@ if iaq_active:
     active_checklists["IAQ Inspection Checklist"] = CHECKLIST_DATA["IAQ Inspection Checklist"]
 
 if not active_checklists:
-    st.warning("Seleziona almeno una tipologia di ispezione per continuare.")
+    st.warning("Seleziona almeno una tipologia di ispezione per continuare. / Select at least one type of inspection to continue.")
 else:
     answered_count = 0
     no_count = 0
@@ -449,34 +503,34 @@ else:
                 with question_col:
                     st.markdown(f"**{question}**")
                     uploaded_photos = st.file_uploader(
-                        "Foto della verifica",
+                        "Foto della verifica / Verification photo",
                         type=["jpg", "jpeg", "png"],
                         accept_multiple_files=True,
                         key=f"{key}_photos",
-                        help="Le foto vengono mostrate sotto la domanda e inserite nello stesso punto nel PDF.",
+                        help="Le foto vengono mostrate sotto la domanda e inserite nello stesso punto nel PDF. / Photos are shown below the question and inserted in the same place in the PDF.",
                     )
                     photos = []
                     for uploaded_photo in uploaded_photos or []:
                         photo_data = uploaded_photo.getvalue()
                         if len(photo_data) > 10 * 1024 * 1024:
                             st.error(
-                                f"{uploaded_photo.name}: supera il limite di 10 MB e non verrà aggiunta."
+                                f"{uploaded_photo.name}: supera il limite di 10 MB / exceeds 10 MB limit."
                             )
                             continue
                         photos.append({"name": uploaded_photo.name, "data": photo_data})
                         st.image(photo_data, caption=uploaded_photo.name, width=180)
                 with status_col:
                     status = st.selectbox(
-                        "Esito",
+                        "Esito / Result",
                         STATUSES,
                         key=f"{key}_status",
                         label_visibility="collapsed",
                     )
                 note = st.text_area(
-                    "Note / evidenze / azione correttiva / dettagli richiesti",
+                    "Note / evidenze / azione correttiva / Notes / evidence / corrective action",
                     key=f"{key}_note",
                     height=68,
-                    placeholder="Aggiungi riferimenti, dettagli, responsabile e scadenza se necessario.",
+                    placeholder="Aggiungi riferimenti, dettagli, responsabile e scadenza se necessario. / Add references, details, responsible person and deadline if necessary.",
                 )
                 st.divider()
                 st.session_state[key] = {
@@ -484,27 +538,27 @@ else:
                     "note": note,
                     "photos": photos,
                 }
-                if status != "Da verificare":
+                if status != "Da verificare / TBD":
                     answered_count += 1
                     applicable_count += status != "N/A"
                 if status == "No":
                     no_count += 1
 
-    st.subheader("Riepilogo")
+    st.subheader("Riepilogo / Summary")
     metric1, metric2, metric3 = st.columns(3)
-    metric1.metric("Verifiche completate", f"{answered_count}/{total_count}")
-    metric2.metric("Esiti negativi", no_count)
-    metric3.metric("Verifiche applicabili", applicable_count)
+    metric1.metric("Verifiche completate / Completed verifications", f"{answered_count}/{total_count}")
+    metric2.metric("Esiti negativi / Negative results", no_count)
+    metric3.metric("Verifiche applicabili / Applicable verifications", applicable_count)
     st.progress(answered_count / total_count if total_count else 0.0)
 
     general_notes = st.text_area(
-        "Osservazioni generali",
+        "Osservazioni generali / General Notes",
         key="general_notes",
-        placeholder="Annotazioni conclusive, priorità o riferimenti agli allegati.",
+        placeholder="Annotazioni conclusive, priorità o riferimenti agli allegati. / Concluding notes, priorities or references to attachments.",
     )
 
     if not st.session_state.get("project", "").strip():
-        st.caption("Inserisci il nome del progetto per abilitare il download del PDF.")
+        st.caption("Inserisci il nome del progetto per abilitare il download del PDF. / Enter the project name to enable PDF download.")
 
     metadata = {
         "project": st.session_state.get("project", "").strip() or "—",
@@ -518,16 +572,19 @@ else:
         "leed_version": st.session_state.get("leed_version", "").strip() or "—",
         "contact": st.session_state.get("contact", "").strip() or "—",
         "weather": (
-            f"{weather}\nTipo dati: {weather_source or 'non disponibile'}\n"
-            "Fonte: Open-Meteo (CC BY 4.0)"
+            f"{weather}\nData: {weather_source or 'N/A'}\n"
+            "Source: Open-Meteo (CC BY 4.0)"
         ),
+        "storm_event": f"Sì / Yes: {st.session_state.get('storm_details', '')}" if st.session_state.get('storm_event') == "Sì / Yes" else "No",
+        "spill_past": f"Sì / Yes: {st.session_state.get('spill_past_details', '')}" if st.session_state.get('spill_past') == "Sì / Yes" else "No",
+        "spill_current": f"Sì / Yes: {st.session_state.get('spill_current_details', '')}" if st.session_state.get('spill_current') == "Sì / Yes" else "No",
         "general_notes": general_notes.strip(),
     }
     
     answers = {
         f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}": st.session_state.get(
             f"q_{list(CHECKLIST_DATA.keys()).index(section)}_{question_index}",
-            {"status": "Da verificare", "note": "", "photos": []},
+            {"status": "Da verificare / TBD", "note": "", "photos": []},
         )
         for section, questions in active_checklists.items()
         for question_index, _ in enumerate(questions)
@@ -539,11 +596,11 @@ else:
             char.lower() if char.isalnum() else "_" for char in project.strip()
         ).strip("_")
         st.download_button(
-            "Scarica checklist in PDF",
+            "Scarica checklist in PDF / Download PDF checklist",
             data=pdf_bytes,
             file_name=f"checklist_leed_{safe_name or 'cantiere'}_{inspection_date:%Y%m%d}.pdf",
             mime="application/pdf",
             type="primary",
         )
     else:
-        st.button("Scarica checklist in PDF", disabled=True, type="primary")
+        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary")
