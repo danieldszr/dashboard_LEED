@@ -242,7 +242,7 @@ def make_pdf(metadata: dict, answers: dict) -> bytes:
         leftMargin=17 * mm,
         topMargin=20 * mm,
         bottomMargin=18 * mm,
-        title="Checklist ispezione di cantiere LEED",
+        title="Checklist ispezione di cantiere LEED-MERDA",
         author="Dashboard checklist LEED",
     )
     styles = getSampleStyleSheet()
