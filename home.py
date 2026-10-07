@@ -447,8 +447,7 @@ st.info(
 with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Data", expanded=True):
     first, second, third = st.columns(3)
     with first:
-        project = st.text_input("Nome progetto / Project Name *", key="project")
-        site = st.text_input("Cantiere-sito / Site", key="site")
+        project = st.text_input("Commessa / Project Name *", key="project")
         phase = st.text_input("Fase costruttiva / Construction Phase", key="phase")
         address = st.text_input("Indirizzo / Address", key="address")
     with second:
