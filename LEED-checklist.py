@@ -444,7 +444,11 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
     first, second, third = st.columns(3)
     with first:
         project = st.text_input("Commessa / Project Name *", key="project")
-        phase = st.text_input("Fase costruttiva / Construction Phase", key="phase")
+        phase = st.selectbox(
+            "Fase costruttiva / Construction Phase",
+            ("Fase A", "Fase B", "Fase C"),
+            key="phase",
+        )
         address = st.text_input("Indirizzo / Address", key="address")
     with second:
         inspector = st.text_input("Ispettore / Inspector *", key="inspector")
