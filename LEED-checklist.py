@@ -439,10 +439,6 @@ st.markdown(
     "Complete the verifications, record evidence and corrective actions, then download the PDF report.</p>",
     unsafe_allow_html=True,
 )
-st.info(
-    "Checklist generale di supporto: non sostituisce i requisiti ufficiali LEED, il piano di progetto o le indicazioni del LEED AP. / "
-    "General support checklist: it does not replace the official LEED requirements, the project plan or the LEED AP indications."
-)
 
 with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Data", expanded=True):
     first, second, third = st.columns(3)
