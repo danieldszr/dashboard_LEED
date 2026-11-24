@@ -139,8 +139,25 @@ class WeatherLookupError(Exception):
     pass
 
 
+def _load_font(size: int):
+    for font_name in (
+        "DejaVuSans-Bold.ttf",
+        "DejaVuSans.ttf",
+        "LiberationSans-Bold.ttf",
+        "LiberationSans-Regular.ttf",
+        "Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ):
+        try:
+            return ImageFont.truetype(font_name, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
-    """Applica una didascalia in basso a destra con commessa, data e posto."""
+    """Applica una didascalia ben leggibile in basso a destra con commessa, data e posto."""
     parts = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
     caption = " | ".join(parts)
     if not caption:
@@ -150,33 +167,32 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     img = ImageOps.exif_transpose(img).convert("RGBA")
     width, height = img.size
 
-    font_size = max(14, int(min(width, height) * 0.026))
-    font = None
-    for font_name in (
-        "DejaVuSans-Bold.ttf",
-        "DejaVuSans.ttf",
-        "LiberationSans-Regular.ttf",
-        "Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    ):
-        try:
-            font = ImageFont.truetype(font_name, font_size)
-            break
-        except OSError:
-            continue
-    if font is None:
-        font = ImageFont.load_default()
-
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
+    # Dimensione triplicata rispetto al valore precedente (0.026 -> 0.078)
+    font_size = max(36, int(min(width, height) * 0.078))
+    font = _load_font(font_size)
+
+    margin = max(16, int(min(width, height) * 0.025))
+    pad_x = max(16, int(font_size * 0.45))
+    pad_y = max(10, int(font_size * 0.30))
+    max_box_width = width - 2 * margin
+
     bbox = draw.textbbox((0, 0), caption, font=font)
     text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
 
-    margin = max(10, int(min(width, height) * 0.02))
-    pad_x = max(8, int(font_size * 0.55))
-    pad_y = max(5, int(font_size * 0.35))
+    # Se la didascalia è molto lunga, scala proporzionalmente il font per farla entrare nella foto
+    if text_w + 2 * pad_x > max_box_width and text_w > 0:
+        scale_ratio = (max_box_width - 2 * pad_x) / text_w
+        font_size = max(18, int(font_size * scale_ratio))
+        font = _load_font(font_size)
+        pad_x = max(10, int(font_size * 0.45))
+        pad_y = max(6, int(font_size * 0.30))
+        bbox = draw.textbbox((0, 0), caption, font=font)
+        text_w = bbox[2] - bbox[0]
+
+    text_h = bbox[3] - bbox[1]
 
     box_right = width - margin
     box_bottom = height - margin
@@ -185,7 +201,7 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     draw.rectangle(
         [box_left, box_top, box_right, box_bottom],
-        fill=(23, 59, 53, 195),
+        fill=(23, 59, 53, 215),
     )
     draw.text(
         (box_left + pad_x - bbox[0], box_top + pad_y - bbox[1]),
@@ -490,7 +506,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             note = answer.get("note", "").strip()
             photos = answer.get("photos", [])
 
-            # Riga principale della domanda
             rows.append([
                 Paragraph(f"<b>{escape(question)}</b>", styles["SmallCell"]),
                 para(bmp_inst, "SmallCellCenter"),
@@ -503,7 +518,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                 table_style.append(("BACKGROUND", (2, current_row), (2, current_row), BMP_MAINTENANCE_COLORS[bmp_maint]))
             current_row += 1
 
-            # Riga Note-Evidenze sotto la domanda (unita su 3 colonne)
             note_display = escape(note).replace("\n", "<br/>") if note else "—"
             rows.append([
                 Paragraph(f"<b>Note-Evidenze / Notes:</b> {note_display}", styles["SmallCell"]),
@@ -514,7 +528,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.HexColor("#FAFBFB")))
             current_row += 1
 
-            # Righe Foto ordinate una accanto all'altra (fino a 3 per riga)
             if photos:
                 photos_per_row = 3
                 photo_col_width = 54 * mm
@@ -553,7 +566,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         table.setStyle(TableStyle(table_style))
         story.append(table)
 
-    # Osservazioni generali
     story.extend(
         [
             Paragraph("Osservazioni generali / General Notes", styles["SectionHeading"]),
@@ -562,7 +574,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         ]
     )
 
-    # Due riquadri finali per Non conformità e Risoluzione non conformità precedenti
     def build_nc_box(header_text: str, content_text: str) -> Table:
         display_text = (
             escape(content_text).replace("\n", "<br/>")
@@ -915,10 +926,19 @@ else:
         safe_name = "".join(
             char.lower() if char.isalnum() else "_" for char in project.strip()
         ).strip("_")
+        selected_codes = []
+        if esc_active:
+            selected_codes.append("ESC")
+        if cdwm_active:
+            selected_codes.append("CDWM")
+        if iaq_active:
+            selected_codes.append("IAQ")
+        codes_str = "-".join(selected_codes) if selected_codes else "LEED"
+
         st.download_button(
             "Scarica checklist in PDF / Download PDF checklist",
             data=pdf_bytes,
-            file_name=f"checklist_leed_{safe_name or 'cantiere'}_{inspection_date:%Y%m%d}.pdf",
+            file_name=f"{safe_name or 'cantiere'}_checklist {codes_str}_{inspection_date:%Y%m%d}.pdf",
             mime="application/pdf",
             type="primary",
         )
