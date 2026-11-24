@@ -169,8 +169,8 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Dimensione bilanciata: 7% del lato corto (minimo 50px)
-    font_size = max(50, int(min(width, height) * 0.07))
+    # Dimensione bilanciata: 4% del lato corto (minimo 50px)
+    font_size = max(50, int(min(width, height) * 0.04))
     font = _load_font(font_size)
 
     margin = max(16, int(min(width, height) * 0.02))
