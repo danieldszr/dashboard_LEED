@@ -33,11 +33,13 @@ CHECKLIST_DATA = {
         "Entrata-uscita stabilizzata (TC-1) / Stabilized Construction Entry-Exit",
         "Piste di cantiere stabilizzata (TC-2) / Stabilized Construction roadway",
         "Lavaggio ruote (TC-3) / Tire wash",
+        "Controllo delle polveri (EC-3) / Dust control",
         "Scarico e stoccaggio materiali (WM-1) / Material delivery and storage",
         "Gestione dei cumuli (WM-3) / Stockpile management",
         "Gestione dei rifiuti solidi (WM-5) / Solid waste management",
         "Lavaggio del calcestruzzo (WM-8) / Concrete waste management",
-        "Rifornimento di veicoli e mezzi (NS-9) / Vehicle and equipment fueling"
+        "Rifornimento di veicoli e mezzi (NS-9) / Vehicle and equipment fueling",
+        "Protezione della vegetazione esistente (EC-2) / Preservation of Existing Vegetation",
     ],
     "CDWM Inspection Checklist": [
         "Identificazione di un’area dedicata all’interno del cantiere destinata allo stoccaggio e separazione dei rifiuti di costruzione. / Identification of a dedicated area inside the construction site for the storage and separation of construction waste",
@@ -60,6 +62,14 @@ CHECKLIST_DATA = {
         "Le apparecchiature ed i canali sono debitamente sigillati con plastica o simile dopo l'installazione a prevenire contaminazione da polveri e umidità. / HVAC systems equipment and components (ducts) are properly sealed with taped plastic after installation to prevent dust and moisture contamination."
     ]
 }
+
+ESC_ADDITIONAL_MEASURES = [
+    "Uso efficiente dell’energia in cantiere (CAM 2.6.1) / Efficient use on energy on construction site",
+    "Abbattimento delle emissioni gassose delle macchine (CAM 2.6.1) / Reduction of gaseous emissions from machines",
+    "Risparmio idrico (CAM 2.6.1) / Water saving",
+    "Conservazione dello strato superficiale del terreno (CAM 2.6.2) / Preservation of the soil surface layer",
+    "Rinterri e riempimenti (CAM 2.6.3) / Backfills and fills",
+]
 
 STATUSES = ("Da verificare / TBD", "Sì / Yes", "No", "N/A")
 STATUS_COLORS = {
@@ -352,7 +362,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     for section, questions in active_checklists.items():
         story.append(Paragraph(escape(section), styles["SectionHeading"]))
         rows = [[para("Verifica / Verification"), para("BMP inst.?"), para("Manut. / Maint.?"), para("Note-Evidenze / Notes")]]
-        row_statuses = []
         section_index = list(CHECKLIST_DATA.keys()).index(section)
         for question_index, question in enumerate(questions):
             key = f"q_{section_index}_{question_index}"
@@ -361,7 +370,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             bmp_maint = answer.get("bmp_maintenance", "Da verificare / TBD")
             note = answer.get("note", "").strip() or "—"
             rows.append([para(question), para(bmp_inst, "SmallCellCenter"), para(bmp_maint, "SmallCellCenter"), para(note)])
-            row_statuses.append((bmp_inst, bmp_maint))
             
             for photo in answer.get("photos", []):
                 image = ReportImage(
@@ -535,6 +543,13 @@ st.write("Seleziona le checklist che vuoi compilare in questa sessione: / Select
 col1, col2, col3 = st.columns(3)
 with col1:
     esc_active = st.checkbox("ESC Inspection Checklist", value=True)
+    esc_additional = False
+    if esc_active:
+        esc_additional = st.checkbox(
+            "Misure addizionali / Additional measures",
+            value=False,
+            key="esc_additional",
+        )
 with col2:
     cdwm_active = st.checkbox("CDWM Inspection Checklist", value=True)
 with col3:
@@ -542,7 +557,10 @@ with col3:
 
 active_checklists = {}
 if esc_active:
-    active_checklists["ESC Inspection Checklist"] = CHECKLIST_DATA["ESC Inspection Checklist"]
+    esc_questions = list(CHECKLIST_DATA["ESC Inspection Checklist"])
+    if esc_additional:
+        esc_questions.extend(ESC_ADDITIONAL_MEASURES)
+    active_checklists["ESC Inspection Checklist"] = esc_questions
 if cdwm_active:
     active_checklists["CDWM Inspection Checklist"] = CHECKLIST_DATA["CDWM Inspection Checklist"]
 if iaq_active:
