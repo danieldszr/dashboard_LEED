@@ -546,7 +546,7 @@ with col1:
     esc_additional = False
     if esc_active:
         esc_additional = st.checkbox(
-            "Misure addizionali / Additional measures",
+            "Misure addizionali (CAM dm 23.06.2022 n.256 – criteri 2.6) / Additional measures",
             value=False,
             key="esc_additional",
         )
@@ -710,3 +710,4 @@ else:
         )
     else:
         st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary")
+        
