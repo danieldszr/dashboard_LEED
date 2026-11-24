@@ -69,6 +69,12 @@ STATUS_COLORS = {
     "N/A": colors.HexColor("#E9EDF2"),
 }
 
+INSPECTOR_TITLES = (
+    "LEED AP",
+    "LEED GA",
+    "Sustainability Consultant",
+)
+
 INSPECTION_TYPES = (
     "Regolare (mensile) / Regular (monthly)",
     "Prima di un evento meteorico / Pre-storm event",
@@ -297,11 +303,10 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
     metadata_rows = [
         [para("Commessa / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
-        [para(metadata["site"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
-        [para("Fase costr. / Phase"), para(metadata["phase"]), "", ""],
-        [para("Indirizzo / Address"), para(metadata["address"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
-        [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Ora / Time (Start-End)"), para(metadata["time_range"])],
-        [para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"]), "", ""],
+        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"])],
+        [para("Indirizzo / Address"), para(metadata["address"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
+        [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
+        [para("Ora / Time (Start-End)"), para(metadata["time_range"]), para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"])],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
     metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
@@ -309,7 +314,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
-                ("BACKGROUND", (2, 0), (2, -3), colors.HexColor("#EDF3F1")),
+                ("BACKGROUND", (2, 0), (2, -2), colors.HexColor("#EDF3F1")),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
@@ -317,7 +322,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                 ("SPAN", (1, 5), (3, 5)),
-                ("SPAN", (1, 6), (3, 6)),
             ]
         )
     )
@@ -451,7 +455,16 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
         )
         address = st.text_input("Indirizzo / Address", key="address")
     with second:
-        inspector = st.text_input("Ispettore / Inspector *", key="inspector")
+        col_insp1, col_insp2 = st.columns(2)
+        with col_insp1:
+            inspector = st.text_input("Ispettore / Inspector *", key="inspector")
+        with col_insp2:
+            inspector_titles = st.multiselect(
+                "Titolo(i) di chi effettua l'ispezione / Inspector Title(s)",
+                INSPECTOR_TITLES,
+                placeholder="Seleziona... / Select...",
+                key="inspector_titles",
+            )
         inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
         leed_version = st.text_input("Versione-sistema LEED / LEED Version", placeholder="Es. BD+C v4.1", key="leed_version")
     with third:
@@ -628,6 +641,7 @@ else:
     if not st.session_state.get("project", "").strip():
         st.caption("Inserisci il nome del progetto per abilitare il download del PDF. / Enter the project name to enable PDF download.")
 
+    selected_titles = st.session_state.get("inspector_titles", [])
     metadata = {
         "project": st.session_state.get("project", "").strip() or "—",
         "site": st.session_state.get("site", "").strip() or "—",
@@ -637,6 +651,7 @@ else:
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
         "inspection_type": st.session_state.get("inspection_type", "—"),
         "inspector": st.session_state.get("inspector", "").strip() or "—",
+        "inspector_titles": ", ".join(selected_titles) if selected_titles else "—",
         "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
         "leed_version": st.session_state.get("leed_version", "").strip() or "—",
         "weather": f"{weather}\nData: {weather_source or 'N/A'}\nSource: Open-Meteo (CC BY 4.0)",
