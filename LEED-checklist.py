@@ -157,7 +157,7 @@ def _load_font(size: int):
 
 
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
-    """Applica una didascalia extra-large multi-riga in basso a destra con commessa, data e posto."""
+    """Applica una didascalia proporzionata e ben leggibile in basso a destra con commessa, data e posto."""
     lines = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
     if not lines:
         return photo_bytes
@@ -169,38 +169,38 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Font triplicato rispetto al precedente (0.14 -> 0.42 del lato corto, minimo 216px)
-    font_size = max(216, int(min(width, height) * 0.42))
+    # Dimensione bilanciata: 18% del lato corto (minimo 90px)
+    font_size = max(90, int(min(width, height) * 0.18))
     font = _load_font(font_size)
 
     margin = max(16, int(min(width, height) * 0.02))
-    pad_x = max(24, int(font_size * 0.35))
-    pad_y = max(16, int(font_size * 0.25))
-    line_spacing = max(8, int(font_size * 0.18))
-    max_box_width = width - 2 * margin
-    max_box_height = int(height * 0.55)
+    pad_x = max(18, int(font_size * 0.35))
+    pad_y = max(12, int(font_size * 0.25))
+    line_spacing = max(6, int(font_size * 0.18))
+    max_box_width = int(width * 0.75)
+    max_box_height = int(height * 0.30)
 
-    def measure_lines(fnt, px, py, l_sp):
+    def measure_lines(fnt, l_sp):
         bboxes = [draw.textbbox((0, 0), line, font=fnt) for line in lines]
         max_w = max(b[2] - b[0] for b in bboxes)
         heights = [b[3] - b[1] for b in bboxes]
         total_h = sum(heights) + l_sp * (len(lines) - 1)
         return bboxes, max_w, heights, total_h
 
-    bboxes, text_w, line_heights, text_h = measure_lines(font, pad_x, pad_y, line_spacing)
+    bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
-    # Scala proporzionalmente se il blocco supera i limiti di larghezza o altezza della foto
+    # Scala proporzionalmente per non superare il 75% in larghezza o il 30% in altezza
     scale_w = (max_box_width - 2 * pad_x) / text_w if (text_w + 2 * pad_x > max_box_width and text_w > 0) else 1.0
     scale_h = (max_box_height - 2 * pad_y) / text_h if (text_h + 2 * pad_y > max_box_height and text_h > 0) else 1.0
     scale_ratio = min(scale_w, scale_h)
 
     if scale_ratio < 1.0:
-        font_size = max(36, int(font_size * scale_ratio))
+        font_size = max(24, int(font_size * scale_ratio))
         font = _load_font(font_size)
-        pad_x = max(16, int(font_size * 0.35))
-        pad_y = max(12, int(font_size * 0.25))
-        line_spacing = max(6, int(font_size * 0.18))
-        bboxes, text_w, line_heights, text_h = measure_lines(font, pad_x, pad_y, line_spacing)
+        pad_x = max(12, int(font_size * 0.35))
+        pad_y = max(8, int(font_size * 0.25))
+        line_spacing = max(4, int(font_size * 0.18))
+        bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
     box_right = width - margin
     box_bottom = height - margin
@@ -209,13 +209,12 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     draw.rectangle(
         [box_left, box_top, box_right, box_bottom],
-        fill=(23, 59, 53, 230),
+        fill=(23, 59, 53, 220),
     )
 
     current_y = box_top + pad_y
     for line, bbox, lh in zip(lines, bboxes, line_heights):
         line_w = bbox[2] - bbox[0]
-        # Allinea il testo a destra all'interno del riquadro
         text_x = box_right - pad_x - line_w - bbox[0]
         draw.text(
             (text_x, current_y - bbox[1]),
