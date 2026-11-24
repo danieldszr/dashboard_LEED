@@ -73,11 +73,19 @@ CHECKLIST_DATA = {
 }
 
 STATUSES = ("Da verificare / TBD", "Sì / Yes", "No", "N/A")
-STATUS_COLORS = {
-    "Da verificare / TBD": colors.HexColor("#FFF0C2"),
-    "Sì / Yes": colors.HexColor("#DDF3E5"),
-    "No": colors.HexColor("#FCE1DF"),
-    "N/A": colors.HexColor("#E9EDF2"),
+
+GREEN_FILL = colors.HexColor("#DDF3E5")
+RED_FILL = colors.HexColor("#FCE1DF")
+HEADER_TEAL = colors.HexColor("#4FA8BA")
+
+BMP_INSTALLED_COLORS = {
+    "Sì / Yes": GREEN_FILL,
+    "No": RED_FILL,
+}
+
+BMP_MAINTENANCE_COLORS = {
+    "Sì / Yes": RED_FILL,
+    "No": GREEN_FILL,
 }
 
 INSPECTOR_TITLES = (
@@ -285,7 +293,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             spaceAfter=0,
         )
     )
-    
     styles.add(
         ParagraphStyle(
             name="SmallCellCenter",
@@ -294,6 +301,39 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             leading=10,
             spaceAfter=0,
             alignment=TA_CENTER,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="TableHeader",
+            parent=styles["BodyText"],
+            fontName="Helvetica-Bold",
+            fontSize=8,
+            leading=10,
+            textColor=colors.white,
+            spaceAfter=0,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="TableHeaderCenter",
+            parent=styles["BodyText"],
+            fontName="Helvetica-Bold",
+            fontSize=8,
+            leading=10,
+            textColor=colors.white,
+            alignment=TA_CENTER,
+            spaceAfter=0,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="PhotoCaption",
+            parent=styles["BodyText"],
+            fontSize=7,
+            leading=9,
+            textColor=colors.HexColor("#52645E"),
+            spaceAfter=0,
         )
     )
 
@@ -362,31 +402,13 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
     for section, questions in active_checklists.items():
         story.append(Paragraph(escape(section), styles["SectionHeading"]))
-        rows = [[para("Verifica / Verification"), para("BMP inst.?"), para("Manut. / Maint.?"), para("Note-Evidenze / Notes")]]
-        section_index = list(CHECKLIST_DATA.keys()).index(section)
-        for question_index, question in enumerate(questions):
-            key = f"q_{section_index}_{question_index}"
-            answer = answers.get(key, {})
-            bmp_inst = answer.get("bmp_installed", "Da verificare / TBD")
-            bmp_maint = answer.get("bmp_maintenance", "Da verificare / TBD")
-            note = answer.get("note", "").strip() or "—"
-            rows.append([para(question), para(bmp_inst, "SmallCellCenter"), para(bmp_maint, "SmallCellCenter"), para(note)])
-            
-            for photo in answer.get("photos", []):
-                image = ReportImage(
-                    BytesIO(photo["data"]),
-                    width=96 * mm,
-                    height=54 * mm,
-                    kind="bound",
-                )
-                image.hAlign = "LEFT"
-                rows.append(
-                    [[image, para(f"Foto/Photo: {photo['name']}")], "", "", ""]
-                )
-                
-        table = Table(rows, colWidths=[88 * mm, 21 * mm, 21 * mm, 43 * mm], repeatRows=1)
+        rows = [[
+            para("BMP o attività / BMP or activity", "TableHeader"),
+            para("BMP inst.?", "TableHeaderCenter"),
+            para("Manut. / Maint.?", "TableHeaderCenter"),
+        ]]
         table_style = [
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B35")),
+            ("BACKGROUND", (0, 0), (-1, 0), HEADER_TEAL),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -395,26 +417,135 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             ("TOPPADDING", (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]
-        
+
+        section_index = list(CHECKLIST_DATA.keys()).index(section)
         current_row = 1
-        for question_index, _ in enumerate(questions):
+
+        for question_index, question in enumerate(questions):
             key = f"q_{section_index}_{question_index}"
             answer = answers.get(key, {})
             bmp_inst = answer.get("bmp_installed", "Da verificare / TBD")
             bmp_maint = answer.get("bmp_maintenance", "Da verificare / TBD")
-            table_style.append(("BACKGROUND", (1, current_row), (1, current_row), STATUS_COLORS[bmp_inst]))
-            table_style.append(("BACKGROUND", (2, current_row), (2, current_row), STATUS_COLORS[bmp_maint]))
-            current_row += 1
-            current_row += len(answer.get("photos", []))
+            note = answer.get("note", "").strip()
+            photos = answer.get("photos", [])
 
+            # Riga principale della domanda
+            rows.append([
+                Paragraph(f"<b>{escape(question)}</b>", styles["SmallCell"]),
+                para(bmp_inst, "SmallCellCenter"),
+                para(bmp_maint, "SmallCellCenter"),
+            ])
+
+            if bmp_inst in BMP_INSTALLED_COLORS:
+                table_style.append(("BACKGROUND", (1, current_row), (1, current_row), BMP_INSTALLED_COLORS[bmp_inst]))
+            if bmp_maint in BMP_MAINTENANCE_COLORS:
+                table_style.append(("BACKGROUND", (2, current_row), (2, current_row), BMP_MAINTENANCE_COLORS[bmp_maint]))
+            current_row += 1
+
+            # Riga Note-Evidenze sotto la domanda (unita su 3 colonne)
+            note_display = escape(note).replace("\n", "<br/>") if note else "—"
+            rows.append([
+                Paragraph(f"<b>Note-Evidenze / Notes:</b> {note_display}", styles["SmallCell"]),
+                "",
+                "",
+            ])
+            table_style.append(("SPAN", (0, current_row), (2, current_row)))
+            table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.HexColor("#FAFBFB")))
+            current_row += 1
+
+            # Righe Foto ordinate una accanto all'altra (fino a 3 per riga)
+            if photos:
+                photos_per_row = 3
+                photo_col_width = 54 * mm
+                for chunk_start in range(0, len(photos), photos_per_row):
+                    chunk = photos[chunk_start:chunk_start + photos_per_row]
+                    photo_cells = []
+                    for photo in chunk:
+                        img = ReportImage(
+                            BytesIO(photo["data"]),
+                            width=50 * mm,
+                            height=32 * mm,
+                            kind="bound",
+                        )
+                        img.hAlign = "LEFT"
+                        photo_cells.append([img, para(f"Foto: {photo['name']}", "PhotoCaption")])
+                    while len(photo_cells) < photos_per_row:
+                        photo_cells.append("")
+
+                    photo_grid = Table([photo_cells], colWidths=[photo_col_width] * photos_per_row)
+                    photo_grid.setStyle(
+                        TableStyle(
+                            [
+                                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                            ]
+                        )
+                    )
+                    rows.append([photo_grid, "", ""])
+                    table_style.append(("SPAN", (0, current_row), (2, current_row)))
+                    current_row += 1
+
+        table = Table(rows, colWidths=[128 * mm, 22 * mm, 23 * mm], repeatRows=1)
         table.setStyle(TableStyle(table_style))
         story.append(table)
 
+    # Osservazioni generali
     story.extend(
         [
             Paragraph("Osservazioni generali / General Notes", styles["SectionHeading"]),
             para(metadata["general_notes"] or "Nessuna osservazione aggiuntiva. / No additional notes."),
-            Spacer(1, 6 * mm),
+            Spacer(1, 5 * mm),
+        ]
+    )
+
+    # Due riquadri finali per Non conformità e Risoluzione non conformità precedenti
+    def build_nc_box(header_text: str, content_text: str) -> Table:
+        display_text = (
+            escape(content_text).replace("\n", "<br/>")
+            if content_text.strip()
+            else "<br/><br/><br/>"
+        )
+        box = Table(
+            [
+                [para(header_text, "TableHeader")],
+                [Paragraph(display_text, styles["SmallCell"])],
+            ],
+            colWidths=[173 * mm],
+        )
+        box.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (0, 0), HEADER_TEAL),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#A9B8B2")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        return box
+
+    story.append(
+        build_nc_box(
+            "Non conformità rilevate / Non-compliance",
+            metadata.get("non_compliance", ""),
+        )
+    )
+    story.append(Spacer(1, 4 * mm))
+    story.append(
+        build_nc_box(
+            "Risoluzione non conformità rilevate precedentemente / Previous non-compliance resolution",
+            metadata.get("prev_non_compliance_res", ""),
+        )
+    )
+    story.extend(
+        [
+            Spacer(1, 7 * mm),
             para("Firma ispettore / Inspector Signature: ____________________________________"),
         ]
     )
@@ -665,6 +796,22 @@ else:
         placeholder="Annotazioni conclusive, priorità o riferimenti agli allegati. / Concluding notes, priorities or references to attachments.",
     )
 
+    col_nc1, col_nc2 = st.columns(2)
+    with col_nc1:
+        non_compliance = st.text_area(
+            "Non conformità rilevate / Non-compliance",
+            key="non_compliance",
+            height=110,
+            placeholder="Elencare eventuali non conformità riscontrate durante l'ispezione. / List any non-compliances identified during the inspection.",
+        )
+    with col_nc2:
+        prev_non_compliance_res = st.text_area(
+            "Risoluzione non conformità rilevate precedentemente / Previous non-compliance resolution",
+            key="prev_non_compliance_res",
+            height=110,
+            placeholder="Descrivere le azioni correttive attuate per chiudere le non conformità precedenti. / Describe corrective actions taken to close previous non-compliances.",
+        )
+
     if not st.session_state.get("project", "").strip():
         st.caption("Inserisci il nome del progetto per abilitare il download del PDF. / Enter the project name to enable PDF download.")
 
@@ -685,6 +832,8 @@ else:
         "spill_past": f"Sì / Yes: {st.session_state.get('spill_past_details', '')}" if st.session_state.get('spill_past') == "Sì / Yes" else "No",
         "spill_current": f"Sì / Yes: {st.session_state.get('spill_current_details', '')}" if st.session_state.get('spill_current') == "Sì / Yes" else "No",
         "general_notes": general_notes.strip(),
+        "non_compliance": non_compliance.strip(),
+        "prev_non_compliance_res": prev_non_compliance_res.strip(),
     }
     
     answers = {
@@ -709,4 +858,4 @@ else:
             type="primary",
         )
     else:
-        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary") 
+        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary")
