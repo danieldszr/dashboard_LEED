@@ -157,7 +157,7 @@ def _load_font(size: int):
 
 
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
-    """Applica una didascalia ben leggibile in basso a destra con commessa, data e posto."""
+    """Applica una didascalia molto grande e ben leggibile in basso a destra con commessa, data e posto."""
     parts = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
     caption = " | ".join(parts)
     if not caption:
@@ -170,25 +170,23 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Dimensione triplicata rispetto al valore precedente (0.026 -> 0.078)
-    font_size = max(36, int(min(width, height) * 0.078))
+    font_size = max(72, int(min(width, height) * 0.14))
     font = _load_font(font_size)
 
-    margin = max(16, int(min(width, height) * 0.025))
-    pad_x = max(16, int(font_size * 0.45))
-    pad_y = max(10, int(font_size * 0.30))
+    margin = max(16, int(min(width, height) * 0.02))
+    pad_x = max(20, int(font_size * 0.40))
+    pad_y = max(14, int(font_size * 0.28))
     max_box_width = width - 2 * margin
 
     bbox = draw.textbbox((0, 0), caption, font=font)
     text_w = bbox[2] - bbox[0]
 
-    # Se la didascalia è molto lunga, scala proporzionalmente il font per farla entrare nella foto
     if text_w + 2 * pad_x > max_box_width and text_w > 0:
         scale_ratio = (max_box_width - 2 * pad_x) / text_w
-        font_size = max(18, int(font_size * scale_ratio))
+        font_size = max(28, int(font_size * scale_ratio))
         font = _load_font(font_size)
-        pad_x = max(10, int(font_size * 0.45))
-        pad_y = max(6, int(font_size * 0.30))
+        pad_x = max(14, int(font_size * 0.40))
+        pad_y = max(10, int(font_size * 0.28))
         bbox = draw.textbbox((0, 0), caption, font=font)
         text_w = bbox[2] - bbox[0]
 
@@ -201,7 +199,7 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     draw.rectangle(
         [box_left, box_top, box_right, box_bottom],
-        fill=(23, 59, 53, 215),
+        fill=(23, 59, 53, 225),
     )
     draw.text(
         (box_left + pad_x - bbox[0], box_top + pad_y - bbox[1]),
@@ -622,11 +620,21 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         ]
     )
 
+    footer_codes = []
+    if "ESC Inspection Checklist" in active_checklists:
+        footer_codes.append("ESC")
+    if "CDWM Inspection Checklist" in active_checklists:
+        footer_codes.append("CDWM")
+    if "IAQ Inspection Checklist" in active_checklists:
+        footer_codes.append("IAQ")
+    footer_suffix = "/".join(footer_codes) if footer_codes else "LEED"
+    footer_caption = f"Checklist cantiere LEED - {footer_suffix}"
+
     def add_page_number(canvas, document):
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#68756F"))
-        canvas.drawString(17 * mm, 10 * mm, "Checklist cantiere LEED - doc. di supporto / LEED site checklist - support doc.")
+        canvas.drawString(17 * mm, 10 * mm, footer_caption)
         canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina / Page {document.page}")
         canvas.restoreState()
 
