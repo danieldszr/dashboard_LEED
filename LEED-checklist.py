@@ -72,7 +72,7 @@ STATUS_COLORS = {
 INSPECTOR_TITLES = (
     "LEED AP",
     "LEED GA",
-    "Sustainability Consultant",
+    "Sustainability consultant",
 )
 
 INSPECTION_TYPES = (
@@ -302,11 +302,11 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     ]
 
     metadata_rows = [
-        [para("Commessa / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
-        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"])],
-        [para("Indirizzo / Address"), para(metadata["address"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
-        [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
-        [para("Ora / Time (Start-End)"), para(metadata["time_range"]), para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"])],
+        [para("Commessa / Project"), para(metadata["project"]), para("Data ispezione / Date"), para(metadata["inspection_date"])],
+        [para("Ora / Time (Start-End)"), para(metadata["time_range"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
+        [para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
+        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"])],
+        [para("Indirizzo / Address"), para(metadata["address"]), "", ""],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
     metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
@@ -314,13 +314,14 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
-                ("BACKGROUND", (2, 0), (2, -2), colors.HexColor("#EDF3F1")),
+                ("BACKGROUND", (2, 0), (2, -3), colors.HexColor("#EDF3F1")),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("SPAN", (1, 4), (3, 4)),
                 ("SPAN", (1, 5), (3, 5)),
             ]
         )
@@ -445,37 +446,43 @@ st.markdown(
 )
 
 with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Data", expanded=True):
-    first, second, third = st.columns(3)
-    with first:
+    # Riga 1: Commessa | Data ispezione | Ora inizio/fine
+    r1_col1, r1_col2, r1_col3 = st.columns(3)
+    with r1_col1:
         project = st.text_input("Commessa / Project Name *", key="project")
-        phase = st.selectbox(
-            "Fase costruttiva / Construction Phase",
-            ("Fase A", "Fase B", "Fase C"),
-            key="phase",
-        )
-        address = st.text_input("Indirizzo / Address", key="address")
-    with second:
-        col_insp1, col_insp2 = st.columns(2)
-        with col_insp1:
-            inspector = st.text_input("Ispettore / Inspector *", key="inspector")
-        with col_insp2:
-            inspector_titles = st.multiselect(
-                "Titolo(i) di chi effettua l'ispezione / Inspector Title(s)",
-                INSPECTOR_TITLES,
-                placeholder="Seleziona... / Select...",
-                key="inspector_titles",
-            )
-        inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
-        leed_version = st.text_input("Versione-sistema LEED / LEED Version", placeholder="Es. BD+C v4.1", key="leed_version")
-    with third:
+    with r1_col2:
         inspection_date = st.date_input("Data ispezione / Inspection Date", value=date.today(), key="inspection_date")
+    with r1_col3:
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             start_time = st.time_input("Ora inizio / Start time", value=time(8, 0), key="start_time")
         with col_t2:
             end_time = st.time_input("Ora fine / End time", value=time(17, 0), key="end_time")
-        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
-        
+
+    # Riga 2: Ispettore | Titolo dell'ispettore | Email ispettore
+    r2_col1, r2_col2, r2_col3 = st.columns(3)
+    with r2_col1:
+        inspector = st.text_input("Ispettore / Inspector *", key="inspector")
+    with r2_col2:
+        inspector_titles = st.multiselect(
+            "Titolo(i) di chi effettua l'ispezione / Inspector Title(s)",
+            INSPECTOR_TITLES,
+            placeholder="Seleziona... / Select...",
+            key="inspector_titles",
+        )
+    with r2_col3:
+        inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
+
+    # Riga 3: Fase costruttiva | Indirizzo (+ Meteo) | Tipo di ispezione
+    r3_col1, r3_col2, r3_col3 = st.columns(3)
+    with r3_col1:
+        phase = st.selectbox(
+            "Fase costruttiva / Construction Phase",
+            ("Fase A", "Fase B", "Fase C"),
+            key="phase",
+        )
+    with r3_col2:
+        address = st.text_input("Indirizzo / Address", key="address")
         weather = "Non disponibile / Not available"
         weather_source = ""
         if address.strip():
@@ -498,6 +505,8 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
                 st.warning(str(error))
         else:
             st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata. / Enter the address to automatically retrieve the weather for the selected date.")
+    with r3_col3:
+        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
 
     st.markdown("---")
     st.markdown("##### Eventi meteorici e fuoriuscite / Storm events and discharges")
@@ -653,7 +662,6 @@ else:
         "inspector": st.session_state.get("inspector", "").strip() or "—",
         "inspector_titles": ", ".join(selected_titles) if selected_titles else "—",
         "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
-        "leed_version": st.session_state.get("leed_version", "").strip() or "—",
         "weather": f"{weather}\nData: {weather_source or 'N/A'}\nSource: Open-Meteo (CC BY 4.0)",
         "storm_event": f"Sì / Yes: {st.session_state.get('storm_details', '')}" if st.session_state.get('storm_event') == "Sì / Yes" else "No",
         "spill_past": f"Sì / Yes: {st.session_state.get('spill_past_details', '')}" if st.session_state.get('spill_past') == "Sì / Yes" else "No",
