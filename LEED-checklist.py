@@ -298,7 +298,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     metadata_rows = [
         [para("Commessa / Project"), para(metadata["project"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
         [para(metadata["site"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
-        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Referente / Site Contact"), para(metadata["contact"])],
+        [para("Fase costr. / Phase"), para(metadata["phase"]), "", ""],
         [para("Indirizzo / Address"), para(metadata["address"]), para("Versione LEED / LEED Ver."), para(metadata["leed_version"])],
         [para("Data ispezione / Date"), para(metadata["inspection_date"]), para("Ora / Time (Start-End)"), para(metadata["time_range"])],
         [para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"]), "", ""],
@@ -453,7 +453,6 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
     with second:
         inspector = st.text_input("Ispettore / Inspector *", key="inspector")
         inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
-        contact = st.text_input("Referente cantiere / Site Contact", key="contact")
         leed_version = st.text_input("Versione-sistema LEED / LEED Version", placeholder="Es. BD+C v4.1", key="leed_version")
     with third:
         inspection_date = st.date_input("Data ispezione / Inspection Date", value=date.today(), key="inspection_date")
@@ -640,7 +639,6 @@ else:
         "inspector": st.session_state.get("inspector", "").strip() or "—",
         "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
         "leed_version": st.session_state.get("leed_version", "").strip() or "—",
-        "contact": st.session_state.get("contact", "").strip() or "—",
         "weather": f"{weather}\nData: {weather_source or 'N/A'}\nSource: Open-Meteo (CC BY 4.0)",
         "storm_event": f"Sì / Yes: {st.session_state.get('storm_details', '')}" if st.session_state.get('storm_event') == "Sì / Yes" else "No",
         "spill_past": f"Sì / Yes: {st.session_state.get('spill_past_details', '')}" if st.session_state.get('spill_past') == "Sì / Yes" else "No",
