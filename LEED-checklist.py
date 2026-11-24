@@ -18,7 +18,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 import io
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 try:
     from pillow_heif import register_heif_opener
     register_heif_opener()
@@ -137,6 +137,67 @@ RECENT_HISTORY_DAYS = 92
 
 class WeatherLookupError(Exception):
     pass
+
+
+def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
+    """Applica una didascalia in basso a destra con commessa, data e posto."""
+    parts = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
+    caption = " | ".join(parts)
+    if not caption:
+        return photo_bytes
+
+    img = Image.open(io.BytesIO(photo_bytes))
+    img = ImageOps.exif_transpose(img).convert("RGBA")
+    width, height = img.size
+
+    font_size = max(14, int(min(width, height) * 0.026))
+    font = None
+    for font_name in (
+        "DejaVuSans-Bold.ttf",
+        "DejaVuSans.ttf",
+        "LiberationSans-Regular.ttf",
+        "Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ):
+        try:
+            font = ImageFont.truetype(font_name, font_size)
+            break
+        except OSError:
+            continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    bbox = draw.textbbox((0, 0), caption, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    margin = max(10, int(min(width, height) * 0.02))
+    pad_x = max(8, int(font_size * 0.55))
+    pad_y = max(5, int(font_size * 0.35))
+
+    box_right = width - margin
+    box_bottom = height - margin
+    box_left = max(margin, box_right - text_w - 2 * pad_x)
+    box_top = max(margin, box_bottom - text_h - 2 * pad_y)
+
+    draw.rectangle(
+        [box_left, box_top, box_right, box_bottom],
+        fill=(23, 59, 53, 195),
+    )
+    draw.text(
+        (box_left + pad_x - bbox[0], box_top + pad_y - bbox[1]),
+        caption,
+        font=font,
+        fill=(255, 255, 255, 255),
+    )
+
+    watermarked = Image.alpha_composite(img, overlay).convert("RGB")
+    out_io = io.BytesIO()
+    watermarked.save(out_io, format="JPEG", quality=90)
+    return out_io.getvalue()
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -705,6 +766,8 @@ else:
     applicable_count = 0
     total_count = 0
 
+    formatted_date_str = inspection_date.strftime("%d/%m/%Y")
+
     for section, questions in active_checklists.items():
         section_index = list(CHECKLIST_DATA.keys()).index(section)
         total_count += len(questions)
@@ -726,26 +789,28 @@ else:
                         photo_data = uploaded_photo.getvalue()
                         photo_name = uploaded_photo.name
                         
-                        if photo_name.lower().endswith(('.heic', '.heif')):
-                            try:
-                                img = Image.open(io.BytesIO(photo_data))
-                                img = img.convert("RGB")
-                                temp_io = io.BytesIO()
-                                img.save(temp_io, format="JPEG")
-                                photo_data = temp_io.getvalue()
-                                photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
-                            except Exception as e:
-                                st.warning(f"Impossibile convertire {photo_name}. Potrebbe mancare la libreria 'pillow-heif'.")
-                                
                         if len(photo_data) > 10 * 1024 * 1024:
                             st.error(
                                 f"{photo_name}: supera il limite di 10 MB / exceeds 10 MB limit."
                             )
                             continue
+
+                        try:
+                            photo_data = watermark_photo(
+                                photo_data,
+                                project.strip(),
+                                formatted_date_str,
+                                address.strip(),
+                            )
+                            if photo_name.lower().endswith(('.heic', '.heif')):
+                                photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
+                        except Exception:
+                            st.warning(f"Impossibile elaborare o applicare la didascalia a {photo_name}.")
+                            continue
                         
                         photos.append({"name": photo_name, "data": photo_data})
                         try:
-                            st.image(photo_data, caption=photo_name, width=180)
+                            st.image(photo_data, caption=photo_name, width=220)
                         except Exception:
                             st.error(f"Errore nella visualizzazione dell'immagine {photo_name}")
                             
@@ -821,7 +886,7 @@ else:
         "site": st.session_state.get("site", "").strip() or "—",
         "address": st.session_state.get("address", "").strip() or "—",
         "phase": st.session_state.get("phase", "").strip() or "—",
-        "inspection_date": st.session_state.get("inspection_date", date.today()).strftime("%d/%m/%Y"),
+        "inspection_date": formatted_date_str,
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
         "inspection_type": st.session_state.get("inspection_type", "—"),
         "inspector": st.session_state.get("inspector", "").strip() or "—",
