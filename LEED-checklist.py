@@ -25,6 +25,8 @@ try:
 except ImportError:
     pass
 
+ADDITIONAL_SECTION_TITLE = "Misure addizionali / Additional measures (CAM dm 23.06.2022 n.256 – criteri 2.6)"
+
 CHECKLIST_DATA = {
     "ESC Inspection Checklist": [
         "Recinzione (SE- 1) / Perimeter control: silt fence",
@@ -40,6 +42,13 @@ CHECKLIST_DATA = {
         "Lavaggio del calcestruzzo (WM-8) / Concrete waste management",
         "Rifornimento di veicoli e mezzi (NS-9) / Vehicle and equipment fueling",
         "Protezione della vegetazione esistente (EC-2) / Preservation of Existing Vegetation",
+    ],
+    ADDITIONAL_SECTION_TITLE: [
+        "Uso efficiente dell’energia in cantiere (CAM 2.6.1) / Efficient use on energy on construction site",
+        "Abbattimento delle emissioni gassose delle macchine (CAM 2.6.1) / Reduction of gaseous emissions from machines",
+        "Risparmio idrico (CAM 2.6.1) / Water saving",
+        "Conservazione dello strato superficiale del terreno (CAM 2.6.2) / Preservation of the soil surface layer",
+        "Rinterri e riempimenti (CAM 2.6.3) / Backfills and fills",
     ],
     "CDWM Inspection Checklist": [
         "Identificazione di un’area dedicata all’interno del cantiere destinata allo stoccaggio e separazione dei rifiuti di costruzione. / Identification of a dedicated area inside the construction site for the storage and separation of construction waste",
@@ -62,14 +71,6 @@ CHECKLIST_DATA = {
         "Le apparecchiature ed i canali sono debitamente sigillati con plastica o simile dopo l'installazione a prevenire contaminazione da polveri e umidità. / HVAC systems equipment and components (ducts) are properly sealed with taped plastic after installation to prevent dust and moisture contamination."
     ]
 }
-
-ESC_ADDITIONAL_MEASURES = [
-    "Uso efficiente dell’energia in cantiere (CAM 2.6.1) / Efficient use on energy on construction site",
-    "Abbattimento delle emissioni gassose delle macchine (CAM 2.6.1) / Reduction of gaseous emissions from machines",
-    "Risparmio idrico (CAM 2.6.1) / Water saving",
-    "Conservazione dello strato superficiale del terreno (CAM 2.6.2) / Preservation of the soil surface layer",
-    "Rinterri e riempimenti (CAM 2.6.3) / Backfills and fills",
-]
 
 STATUSES = ("Da verificare / TBD", "Sì / Yes", "No", "N/A")
 STATUS_COLORS = {
@@ -546,7 +547,7 @@ with col1:
     esc_additional = False
     if esc_active:
         esc_additional = st.checkbox(
-            "Misure addizionali / Additional measures (CAM dm 23.06.2022 n.256 – criteri 2.6)",
+            ADDITIONAL_SECTION_TITLE,
             value=False,
             key="esc_additional",
         )
@@ -557,10 +558,9 @@ with col3:
 
 active_checklists = {}
 if esc_active:
-    esc_questions = list(CHECKLIST_DATA["ESC Inspection Checklist"])
+    active_checklists["ESC Inspection Checklist"] = CHECKLIST_DATA["ESC Inspection Checklist"]
     if esc_additional:
-        esc_questions.extend(ESC_ADDITIONAL_MEASURES)
-    active_checklists["ESC Inspection Checklist"] = esc_questions
+        active_checklists[ADDITIONAL_SECTION_TITLE] = CHECKLIST_DATA[ADDITIONAL_SECTION_TITLE]
 if cdwm_active:
     active_checklists["CDWM Inspection Checklist"] = CHECKLIST_DATA["CDWM Inspection Checklist"]
 if iaq_active:
@@ -709,4 +709,4 @@ else:
             type="primary",
         )
     else:
-        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary")
+        st.button("Scarica checklist in PDF / Download PDF checklist", disabled=True, type="primary") 
