@@ -94,6 +94,18 @@ INSPECTOR_TITLES = (
     "Sustainability consultant",
 )
 
+CONSTRUCTION_PHASES = (
+    "Allestimento cantiere / Site Mobilization",
+    "Demolizioni / Demolition",
+    "Scavi e movimenti terra / Excavation & Earthworks",
+    "Strutture e fondazioni / Foundations & Structure",
+    "Involucro edilizio / Building Envelope",
+    "Impianti (MEP) / MEP Rough-in",
+    "Finiture interne / Interior Finishes",
+    "Sistemazioni esterne / Site Works & Landscaping",
+    "Collaudi e pre-consegna / Commissioning & Handover",
+)
+
 INSPECTION_TYPES = (
     "Regolare (mensile) / Regular (monthly)",
     "Prima di un evento meteorico / Pre-storm event",
@@ -714,7 +726,7 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
     with r3_col1:
         phase = st.selectbox(
             "Fase costruttiva / Construction Phase",
-            ("Fase A", "Fase B", "Fase C"),
+            CONSTRUCTION_PHASES,
             key="phase",
         )
     with r3_col2:
