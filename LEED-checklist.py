@@ -526,12 +526,12 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         Spacer(1, 4 * mm),
     ]
 
-    metadata_rows = [
+ metadata_rows = [
         [para("Informazioni generali / General information", "TableHeader"), "", "", ""],
         [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
         [para("Data / Date"), para(metadata["inspection_date"], bilingual=False), para("Titolo / Title"), para(metadata["inspector_titles"], bilingual=False)],
         [para("Ora / Time"), para(metadata["time_range"], bilingual=False), para("Email / Email"), para(metadata["inspector_email"], bilingual=False)],
-        [para("Tipo ispezione / Inspection type"), para(metadata["inspection_type"]), para("Fase costruzione / Construction phase"), para(metadata["phase"])],
+        [para("Fase costruzione / Construction phase"), para(metadata["phase"]), para("Tipo ispezione / Inspection type"), para(metadata["inspection_type"])],
         [para("Indirizzo / Address"), para(metadata["address"], bilingual=False), "", ""],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
@@ -866,14 +866,10 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
             key="inspector_email",
         )
 
-    # Riga 3: Fase costruttiva | Indirizzo (+ Meteo) | Tipo di ispezione
+# Riga 3: Tipo di ispezione | Indirizzo (+ Meteo) | Fase costruttiva
     r3_col1, r3_col2, r3_col3 = st.columns(3)
     with r3_col1:
-        phase = st.selectbox(
-            "Fase costruttiva / Construction Phase",
-            CONSTRUCTION_PHASES,
-            key="phase",
-        )
+        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
     with r3_col2:
         address = st.text_input("Indirizzo / Address", key="address")
         weather = "Non disponibile / Not available"
@@ -899,7 +895,11 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
         else:
             st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata. / Enter the address to automatically retrieve the weather for the selected date.")
     with r3_col3:
-        inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
+        phase = st.selectbox(
+            "Fase costruttiva / Construction Phase",
+            CONSTRUCTION_PHASES,
+            key="phase",
+        )
 
     st.markdown("---")
     st.markdown("##### Eventi meteorici e fuoriuscite / Storm events and discharges")
