@@ -502,7 +502,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         Paragraph(
             "Ispezione di cantiere LEED / <i>LEED Construction Site Inspection</i>",
             styles["ChecklistTitle"],
-    
+        ),
         Spacer(1, 4 * mm),
     ]
 
