@@ -19,11 +19,13 @@ from reportlab.platypus import (
 )
 import io
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+
 try:
     from pillow_heif import register_heif_opener
     register_heif_opener()
+    HEIF_SUPPORTED = True
 except ImportError:
-    pass
+    HEIF_SUPPORTED = False
 
 ADDITIONAL_SECTION_TITLE = "Misure addizionali / Additional measures (CAM dm 23.06.2022 n.256 – criteri 2.6)"
 
@@ -170,12 +172,19 @@ def _load_font(size: int):
 
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
     """Applica una didascalia proporzionata e ben leggibile in basso a destra con commessa, data e posto."""
+    img = Image.open(io.BytesIO(photo_bytes))
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+    img = img.convert("RGBA")
+
     lines = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
     if not lines:
-        return photo_bytes
+        out_io = io.BytesIO()
+        img.convert("RGB").save(out_io, format="JPEG", quality=90)
+        return out_io.getvalue()
 
-    img = Image.open(io.BytesIO(photo_bytes))
-    img = ImageOps.exif_transpose(img).convert("RGBA")
     width, height = img.size
 
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -842,6 +851,10 @@ else:
                             )
                             continue
 
+                        if photo_name.lower().endswith(('.heic', '.heif')) and not HEIF_SUPPORTED:
+                            st.error(f"{photo_name}: libreria 'pillow-heif' non installata nell'ambiente / 'pillow-heif' library not installed.")
+                            continue
+
                         try:
                             photo_data = watermark_photo(
                                 photo_data,
@@ -851,8 +864,8 @@ else:
                             )
                             if photo_name.lower().endswith(('.heic', '.heif')):
                                 photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
-                        except Exception:
-                            st.warning(f"Impossibile elaborare o applicare la didascalia a {photo_name}.")
+                        except Exception as e:
+                            st.warning(f"Impossibile elaborare o applicare la didascalia a {photo_name}: {e}")
                             continue
                         
                         photos.append({"name": photo_name, "data": photo_data})
