@@ -90,6 +90,28 @@ BMP_MAINTENANCE_COLORS = {
     "No": GREEN_FILL,
 }
 
+INSPECTORS_DIRECTORY = {
+    "Alessandra Viotti": "alessandra.viotti@get-consulting.it",
+    "Andrea Pizza": "andrea.pizza@get-consulting.it",
+    "Daniel Suarez": "daniel.suarez@get-consulting.it",
+    "Daniele Guglielmino": "daniele.guglielmino@get-consulting.it",
+    "Dario Prando": "dario.prando@get-consulting.it",
+    "Davide Borello": "davide.borello@get-consulting.it",
+    "Elia Lupo": "elia.lupo@get-consulting.it",
+    "Elisa Sirombo": "elisa.sirombo@get-consulting.it",
+    "Gaetana Battaglia": "gaetana.battaglia@get-consulting.it",
+    "Giulia Tarantino": "giulia.tarantino@get-consulting.it",
+    "Ilaria Colombo": "ilaria.colombo@get-consulting.it",
+    "Laura Arteaga Albarello": "laura.arteaga@get-consulting.it",
+    "Laura Gualdron": "laura.gualdron@get-consulting.it",
+    "Lina Garcia": "lina.garcia@get-consulting.it",
+    "Marco Bonanno": "marco.bonanno@get-consulting.it",
+    "Simone Massini": "simone.massini@get-consulting.it",
+    "Sofia Mori": "sofia.mori@get-consulting.it",
+    "Staff GET": "staff@get-consulting.it",
+    "Stefano Esposito": "stefano.esposito@get-consulting.it",
+}
+
 INSPECTOR_TITLES = (
     "LEED AP",
     "LEED GA",
@@ -151,6 +173,13 @@ RECENT_HISTORY_DAYS = 92
 
 class WeatherLookupError(Exception):
     pass
+
+
+def _sync_inspector_emails():
+    """Aggiorna automaticamente le email in base agli ispettori selezionati."""
+    selected = st.session_state.get("inspectors", [])
+    emails = [INSPECTORS_DIRECTORY[name] for name in selected if name in INSPECTORS_DIRECTORY]
+    st.session_state["inspector_email"] = ", ".join(emails)
 
 
 def _sync_na_maintenance(question_key: str):
@@ -715,7 +744,13 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
     # Riga 2: Ispettore | Titolo dell'ispettore | Email ispettore
     r2_col1, r2_col2, r2_col3 = st.columns(3)
     with r2_col1:
-        inspector = st.text_input("Ispettore / Inspector *", key="inspector")
+        selected_inspectors = st.multiselect(
+            "Ispettore / Inspector(s) *",
+            list(INSPECTORS_DIRECTORY.keys()),
+            placeholder="Seleziona... / Select...",
+            key="inspectors",
+            on_change=_sync_inspector_emails,
+        )
     with r2_col2:
         inspector_titles = st.multiselect(
             "Titolo(i) di chi effettua l'ispezione / Inspector Title(s)",
@@ -724,7 +759,10 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
             key="inspector_titles",
         )
     with r2_col3:
-        inspector_email = st.text_input("Email ispettore / Inspector Email", key="inspector_email")
+        inspector_email = st.text_input(
+            "Email ispettore / Inspector Email(s)",
+            key="inspector_email",
+        )
 
     # Riga 3: Fase costruttiva | Indirizzo (+ Meteo) | Tipo di ispezione
     r3_col1, r3_col2, r3_col3 = st.columns(3)
@@ -949,7 +987,7 @@ else:
         "inspection_date": formatted_date_str,
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
         "inspection_type": st.session_state.get("inspection_type", "—"),
-        "inspector": st.session_state.get("inspector", "").strip() or "—",
+        "inspector": ", ".join(selected_inspectors) if selected_inspectors else "—",
         "inspector_titles": ", ".join(selected_titles) if selected_titles else "—",
         "inspector_email": st.session_state.get("inspector_email", "").strip() or "—",
         "weather": f"{weather}\nData: {weather_source or 'N/A'}\nSource: Open-Meteo (CC BY 4.0)",
