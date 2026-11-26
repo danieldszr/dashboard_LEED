@@ -395,6 +395,22 @@ def fetch_weather(address: str, inspection_day: str) -> dict:
     }
 
 
+def format_bilingual(text: object, bold_all: bool = False) -> str:
+    """Formatta i testi bilingue rendendo in corsivo (<i>) la parte in inglese."""
+    s = str(text)
+    if s == "Sì / Yes":
+        res = "Sì / <i>Yes</i>"
+    elif s.startswith("Sì / Yes:"):
+        res = f"Sì / <i>Yes:</i> {escape(s[9:].strip())}"
+    elif " / " in s:
+        it_part, en_part = s.split(" / ", 1)
+        res = f"{escape(it_part)} / <i>{escape(en_part)}</i>"
+    else:
+        res = escape(s)
+    res = res.replace("\n", "<br/>")
+    return f"<b>{res}</b>" if bold_all else res
+
+
 def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -474,21 +490,35 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         )
     )
 
-    def para(value: object, style="SmallCell") -> Paragraph:
-        return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles[style])
+    def para(value: object, style="SmallCell", bilingual: bool = True, bold: bool = False) -> Paragraph:
+        if bilingual:
+            formatted = format_bilingual(value, bold_all=bold)
+        else:
+            escaped = escape(str(value)).replace("\n", "<br/>")
+            formatted = f"<b>{escaped}</b>" if bold else escaped
+        return Paragraph(formatted, styles[style])
 
     story = [
-        Paragraph("Ispezione di cantiere LEED / LEED Construction Site Inspection", styles["ChecklistTitle"]),
-      
+        Paragraph(
+            "Ispezione di cantiere LEED / <i>LEED Construction Site Inspection</i>",
+            styles["ChecklistTitle"],
+        ),
+        Paragraph(
+            "Strumento operativo di supporto. Verificare sempre i requisiti applicabili "
+            "nella versione LEED, nei crediti perseguiti e nei documenti approvati del progetto. / "
+            "<i>Supporting operational tool. Always verify the applicable requirements in the LEED version, "
+            "pursued credits, and approved project documents.</i>",
+            styles["BodyText"],
+        ),
         Spacer(1, 4 * mm),
     ]
 
     metadata_rows = [
-        [para("Commessa / Project"), para(metadata["project"]), para("Data ispezione / Date"), para(metadata["inspection_date"])],
-        [para("Ora / Time (Start-End)"), para(metadata["time_range"]), para("Ispettore / Inspector"), para(metadata["inspector"])],
-        [para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"]), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"])],
+        [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Data ispezione / Date"), para(metadata["inspection_date"], bilingual=False)],
+        [para("Ora / Time (Start-End)"), para(metadata["time_range"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
+        [para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"], bilingual=False), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"], bilingual=False)],
         [para("Fase costr. / Phase"), para(metadata["phase"]), para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"])],
-        [para("Indirizzo / Address"), para(metadata["address"]), "", ""],
+        [para("Indirizzo / Address"), para(metadata["address"], bilingual=False), "", ""],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
     metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
@@ -531,11 +561,22 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     )
     story.extend([events_table, Spacer(1, 3 * mm)])
 
+    ENGLISH_ONLY_SECTIONS = {
+        "ESC Inspection Checklist",
+        "CDWM Inspection Checklist",
+        "IAQ Inspection Checklist",
+    }
+
     for section, questions in active_checklists.items():
-        story.append(Paragraph(escape(section), styles["SectionHeading"]))
+        if section in ENGLISH_ONLY_SECTIONS:
+            section_heading_html = f"<i>{escape(section)}</i>"
+        else:
+            section_heading_html = format_bilingual(section)
+        story.append(Paragraph(section_heading_html, styles["SectionHeading"]))
+
         rows = [[
             para("BMP o attività / BMP or activity", "TableHeader"),
-            para("BMP inst.?", "TableHeaderCenter"),
+            para("BMP inst.?", "TableHeaderCenter", bilingual=False),
             para("Manut. / Maint.?", "TableHeaderCenter"),
         ]]
         table_style = [
@@ -551,6 +592,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
         section_index = list(CHECKLIST_DATA.keys()).index(section)
         current_row = 1
+        row_heights = [None]
 
         for question_index, question in enumerate(questions):
             key = f"q_{section_index}_{question_index}"
@@ -561,10 +603,11 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             photos = answer.get("photos", [])
 
             rows.append([
-                Paragraph(f"<b>{escape(question)}</b>", styles["SmallCell"]),
-                para(bmp_inst, "SmallCellCenter"),
-                para(bmp_maint, "SmallCellCenter"),
+                para(question, "SmallCell", bilingual=True, bold=True),
+                para(bmp_inst, "SmallCellCenter", bilingual=True),
+                para(bmp_maint, "SmallCellCenter", bilingual=True),
             ])
+            row_heights.append(None)
 
             if bmp_inst in BMP_INSTALLED_COLORS:
                 table_style.append(("BACKGROUND", (1, current_row), (1, current_row), BMP_INSTALLED_COLORS[bmp_inst]))
@@ -574,10 +617,11 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
 
             note_display = escape(note).replace("\n", "<br/>") if note else "—"
             rows.append([
-                Paragraph(f"<b>Note-Evidenze / Notes:</b> {note_display}", styles["SmallCell"]),
+                Paragraph(f"<b>Note-Evidenze / <i>Notes</i>:</b> {note_display}", styles["SmallCell"]),
                 "",
                 "",
             ])
+            row_heights.append(None)
             table_style.append(("SPAN", (0, current_row), (2, current_row)))
             table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.HexColor("#FAFBFB")))
             current_row += 1
@@ -613,17 +657,28 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                         )
                     )
                     rows.append([photo_grid, "", ""])
+                    row_heights.append(None)
                     table_style.append(("SPAN", (0, current_row), (2, current_row)))
                     current_row += 1
 
-        table = Table(rows, colWidths=[128 * mm, 22 * mm, 23 * mm], repeatRows=1)
+            # Riga di separazione tra una domanda e la successiva
+            if question_index < len(questions) - 1:
+                rows.append(["", "", ""])
+                row_heights.append(2.5 * mm)
+                table_style.append(("SPAN", (0, current_row), (2, current_row)))
+                table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.HexColor("#EDF3F1")))
+                table_style.append(("TOPPADDING", (0, current_row), (2, current_row), 0))
+                table_style.append(("BOTTOMPADDING", (0, current_row), (2, current_row), 0))
+                current_row += 1
+
+        table = Table(rows, colWidths=[128 * mm, 22 * mm, 23 * mm], rowHeights=row_heights, repeatRows=1)
         table.setStyle(TableStyle(table_style))
         story.append(table)
 
     story.extend(
         [
-            Paragraph("Osservazioni generali / General Notes", styles["SectionHeading"]),
-            para(metadata["general_notes"] or "Nessuna osservazione aggiuntiva. / No additional notes."),
+            para("Osservazioni generali / General Notes", "SectionHeading"),
+            para(metadata["general_notes"] or "Nessuna osservazione aggiuntiva. / No additional notes.", bilingual=not bool(metadata["general_notes"])),
             Spacer(1, 5 * mm),
         ]
     )
