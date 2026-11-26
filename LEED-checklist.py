@@ -153,6 +153,12 @@ class WeatherLookupError(Exception):
     pass
 
 
+def _sync_na_maintenance(question_key: str):
+    """Imposta automaticamente la manutenzione su N/A se BMP installata è N/A."""
+    if st.session_state.get(f"{question_key}_bmp_inst") == "N/A":
+        st.session_state[f"{question_key}_bmp_maint"] = "N/A"
+
+
 def _load_font(size: int):
     for font_name in (
         "DejaVuSans-Bold.ttf",
@@ -171,7 +177,7 @@ def _load_font(size: int):
 
 
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
-    """Applica una didascalia proporzionata e ben leggibile in basso a destra con commessa, data e posto."""
+    """Applica una didascalia proporzionata e ben leggibile in basso a destra con commessa, data e luogo."""
     img = Image.open(io.BytesIO(photo_bytes))
     try:
         img = ImageOps.exif_transpose(img)
@@ -190,16 +196,16 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Dimensione bilanciata: 4% del lato corto (minimo 50px)
-    font_size = max(50, int(min(width, height) * 0.04))
+    # Dimensione bilanciata: 3.5% del lato corto (minimo 42px)
+    font_size = max(42, int(min(width, height) * 0.035))
     font = _load_font(font_size)
 
     margin = max(16, int(min(width, height) * 0.02))
     pad_x = max(18, int(font_size * 0.35))
     pad_y = max(12, int(font_size * 0.25))
-    line_spacing = max(6, int(font_size * 0.12))
-    max_box_width = int(width * 0.75)
-    max_box_height = int(height * 0.30)
+    line_spacing = max(8, int(font_size * 0.18))
+    max_box_width = int(width * 0.85)
+    max_box_height = int(height * 0.35)
 
     def measure_lines(fnt, l_sp):
         bboxes = [draw.textbbox((0, 0), line, font=fnt) for line in lines]
@@ -210,17 +216,17 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
-    # Scala proporzionalmente per non superare il 75% in larghezza o il 30% in altezza
+    # Scala proporzionalmente se troppo largo o alto
     scale_w = (max_box_width - 2 * pad_x) / text_w if (text_w + 2 * pad_x > max_box_width and text_w > 0) else 1.0
     scale_h = (max_box_height - 2 * pad_y) / text_h if (text_h + 2 * pad_y > max_box_height and text_h > 0) else 1.0
     scale_ratio = min(scale_w, scale_h)
 
     if scale_ratio < 1.0:
-        font_size = max(24, int(font_size * scale_ratio))
+        font_size = max(20, int(font_size * scale_ratio))
         font = _load_font(font_size)
         pad_x = max(12, int(font_size * 0.35))
         pad_y = max(8, int(font_size * 0.25))
-        line_spacing = max(4, int(font_size * 0.18))
+        line_spacing = max(6, int(font_size * 0.18))
         bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
     box_right = width - margin
@@ -438,16 +444,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             spaceAfter=0,
         )
     )
-    styles.add(
-        ParagraphStyle(
-            name="PhotoCaption",
-            parent=styles["BodyText"],
-            fontSize=7,
-            leading=9,
-            textColor=colors.HexColor("#52645E"),
-            spaceAfter=0,
-        )
-    )
 
     def para(value: object, style="SmallCell") -> Paragraph:
         return Paragraph(escape(str(value)).replace("\n", "<br/>"), styles[style])
@@ -577,7 +573,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                             kind="bound",
                         )
                         img.hAlign = "LEFT"
-                        photo_cells.append([img, para(f"Foto: {photo['name']}", "PhotoCaption")])
+                        photo_cells.append(img)
                     while len(photo_cells) < photos_per_row:
                         photo_cells.append("")
 
@@ -588,8 +584,8 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                                 ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                             ]
                         )
                     )
@@ -822,6 +818,8 @@ else:
     applicable_count = 0
     total_count = 0
 
+    current_project = st.session_state.get("project", "").strip()
+    current_address = st.session_state.get("address", "").strip()
     formatted_date_str = inspection_date.strftime("%d/%m/%Y")
 
     for section, questions in active_checklists.items():
@@ -858,9 +856,9 @@ else:
                         try:
                             photo_data = watermark_photo(
                                 photo_data,
-                                project.strip(),
+                                current_project,
                                 formatted_date_str,
-                                address.strip(),
+                                current_address,
                             )
                             if photo_name.lower().endswith(('.heic', '.heif')):
                                 photo_name = photo_name.rsplit('.', 1)[0] + ".jpg"
@@ -868,9 +866,9 @@ else:
                             st.warning(f"Impossibile elaborare o applicare la didascalia a {photo_name}: {e}")
                             continue
                         
-                        photos.append({"name": photo_name, "data": photo_data})
+                        photos.append({"data": photo_data})
                         try:
-                            st.image(photo_data, caption=photo_name, width=220)
+                            st.image(photo_data, width=220)
                         except Exception:
                             st.error(f"Errore nella visualizzazione dell'immagine {photo_name}")
                             
@@ -878,13 +876,15 @@ else:
                     bmp_installed = st.selectbox(
                         "BMP installata? / BMP installed?",
                         STATUSES,
-                        key=f"{key}_bmp_inst"
+                        key=f"{key}_bmp_inst",
+                        on_change=_sync_na_maintenance,
+                        args=(key,),
                     )
                 with status_col2:
                     bmp_maintenance = st.selectbox(
                         "Necessaria manutenzione alla BMP? / BMP maintenance required?",
                         STATUSES,
-                        key=f"{key}_bmp_maint"
+                        key=f"{key}_bmp_maint",
                     )
                 
                 note = st.text_area(
@@ -937,14 +937,14 @@ else:
             placeholder="Descrivere le azioni correttive attuate per chiudere le non conformità precedenti. / Describe corrective actions taken to close previous non-compliances.",
         )
 
-    if not st.session_state.get("project", "").strip():
+    if not current_project:
         st.caption("Inserisci il nome del progetto per abilitare il download del PDF. / Enter the project name to enable PDF download.")
 
     selected_titles = st.session_state.get("inspector_titles", [])
     metadata = {
-        "project": st.session_state.get("project", "").strip() or "—",
+        "project": current_project or "—",
         "site": st.session_state.get("site", "").strip() or "—",
-        "address": st.session_state.get("address", "").strip() or "—",
+        "address": current_address or "—",
         "phase": st.session_state.get("phase", "").strip() or "—",
         "inspection_date": formatted_date_str,
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
@@ -970,10 +970,10 @@ else:
         for question_index, _ in enumerate(questions)
     }
 
-    if project.strip():
+    if current_project:
         pdf_bytes = make_pdf(metadata, answers, active_checklists)
         safe_name = "".join(
-            char.lower() if char.isalnum() else "_" for char in project.strip()
+            char.lower() if char.isalnum() else "_" for char in current_project
         ).strip("_")
         selected_codes = []
         if esc_active:
