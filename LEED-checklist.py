@@ -654,12 +654,14 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                     table_style.append(("SPAN", (0, current_row), (2, current_row)))
                     current_row += 1
 
-            # Riga di separazione tra una domanda e la successiva
+            # Riga di separazione pulita (senza colore e senza bordi laterali) tra una domanda e la successiva
             if question_index < len(questions) - 1:
                 rows.append(["", "", ""])
-                row_heights.append(2.5 * mm)
+                row_heights.append(3 * mm)
                 table_style.append(("SPAN", (0, current_row), (2, current_row)))
-                table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.HexColor("#EDF3F1")))
+                table_style.append(("BACKGROUND", (0, current_row), (2, current_row), colors.white))
+                table_style.append(("LINEBEFORE", (0, current_row), (0, current_row), 0, colors.white))
+                table_style.append(("LINEAFTER", (2, current_row), (2, current_row), 0, colors.white))
                 table_style.append(("TOPPADDING", (0, current_row), (2, current_row), 0))
                 table_style.append(("BOTTOMPADDING", (0, current_row), (2, current_row), 0))
                 current_row += 1
@@ -734,15 +736,16 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     footer_suffix = "/".join(footer_codes) if footer_codes else "LEED"
     footer_caption = f"Checklist cantiere LEED - {footer_suffix}"
 
-    def add_page_number(canvas, document):
+    def add_header_footer(canvas, document):
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#68756F"))
+        canvas.drawString(17 * mm, A4[1] - 12 * mm, "GET Consulting Srl")
         canvas.drawString(17 * mm, 10 * mm, footer_caption)
         canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina / Page {document.page}")
         canvas.restoreState()
 
-    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
+    doc.build(story, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
     return buffer.getvalue()
 
 
