@@ -525,7 +525,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         ),
         Spacer(1, 4 * mm),
     ]
-
  metadata_rows = [
         [para("Informazioni generali / General information", "TableHeader"), "", "", ""],
         [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
