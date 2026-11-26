@@ -502,14 +502,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         Paragraph(
             "Ispezione di cantiere LEED / <i>LEED Construction Site Inspection</i>",
             styles["ChecklistTitle"],
-        ),
-        Paragraph(
-            "Strumento operativo di supporto. Verificare sempre i requisiti applicabili "
-            "nella versione LEED, nei crediti perseguiti e nei documenti approvati del progetto. / "
-            "<i>Supporting operational tool. Always verify the applicable requirements in the LEED version, "
-            "pursued credits, and approved project documents.</i>",
-            styles["BodyText"],
-        ),
+    
         Spacer(1, 4 * mm),
     ]
 
