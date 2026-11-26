@@ -422,18 +422,26 @@ def format_bilingual(text: object, bold_all: bool = False) -> str:
 
 def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     buffer = BytesIO()
+    left_margin = 17 * mm
+    right_margin = 17 * mm
+    # ReportLab SimpleDocTemplate applica un frame padding interno predefinito di 6 pt
+    # al bordo sinistro delle tabelle; usiamo lo stesso offset per allineare perfettamente il logo.
+    content_left_x = left_margin + 6
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         pageCompression=1,
-        rightMargin=17 * mm,
-        leftMargin=17 * mm,
+        rightMargin=right_margin,
+        leftMargin=left_margin,
         topMargin=22 * mm,
         bottomMargin=18 * mm,
         title="Ispezione di cantiere LEED / LEED Construction Site Inspection",
         author="Dashboard checklist LEED",
     )
     styles = getSampleStyleSheet()
+    styles["BodyText"].textColor = colors.black
+
     styles.add(
         ParagraphStyle(
             name="ChecklistTitle",
@@ -442,7 +450,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             fontSize=16,
             leading=20,
             alignment=TA_CENTER,
-            textColor=colors.HexColor("#173B35"),
+            textColor=colors.black,
             spaceAfter=5 * mm,
         )
     )
@@ -452,7 +460,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             parent=styles["Heading2"],
             fontSize=11,
             leading=14,
-            textColor=colors.HexColor("#173B35"),
+            textColor=colors.black,
             spaceBefore=5 * mm,
             spaceAfter=2 * mm,
         )
@@ -463,6 +471,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             parent=styles["BodyText"],
             fontSize=8,
             leading=10,
+            textColor=colors.black,
             spaceAfter=0,
         )
     )
@@ -472,6 +481,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             parent=styles["BodyText"],
             fontSize=8,
             leading=10,
+            textColor=colors.black,
             spaceAfter=0,
             alignment=TA_CENTER,
         )
@@ -517,27 +527,31 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     ]
 
     metadata_rows = [
-        [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Data ispezione / Date"), para(metadata["inspection_date"], bilingual=False)],
-        [para("Ora / Time (Start-End)"), para(metadata["time_range"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
-        [para("Titolo(i) / Title(s)"), para(metadata["inspector_titles"], bilingual=False), para("Email ispettore / Insp. Email"), para(metadata["inspector_email"], bilingual=False)],
-        [para("Fase costr. / Phase"), para(metadata["phase"]), para("Tipo Ispez. / Insp. Type"), para(metadata["inspection_type"])],
+        [para("Informazioni generali / General information", "TableHeader"), "", "", ""],
+        [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
+        [para("Data / Date"), para(metadata["inspection_date"], bilingual=False), para("Titolo / Title"), para(metadata["inspector_titles"], bilingual=False)],
+        [para("Ora / Time"), para(metadata["time_range"], bilingual=False), para("Email / Email"), para(metadata["inspector_email"], bilingual=False)],
+        [para("Tipo ispezione / Inspection type"), para(metadata["inspection_type"]), para("Fase costruzione / Construction phase"), para(metadata["phase"])],
         [para("Indirizzo / Address"), para(metadata["address"], bilingual=False), "", ""],
         [para("Meteo / Weather"), para(metadata["weather"]), "", ""],
     ]
-    metadata_table = Table(metadata_rows, colWidths=[31 * mm, 54 * mm, 31 * mm, 54 * mm])
+    metadata_table = Table(metadata_rows, colWidths=[31 * mm, 55.5 * mm, 31 * mm, 55.5 * mm])
     metadata_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
-                ("BACKGROUND", (2, 0), (2, -3), colors.HexColor("#EDF3F1")),
+                ("BACKGROUND", (0, 0), (-1, 0), HEADER_TEAL),
+                ("SPAN", (0, 0), (3, 0)),
+                ("BACKGROUND", (0, 1), (0, -1), colors.HexColor("#EDF3F1")),
+                ("BACKGROUND", (2, 1), (2, 4), colors.HexColor("#EDF3F1")),
+                ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("SPAN", (1, 4), (3, 4)),
                 ("SPAN", (1, 5), (3, 5)),
+                ("SPAN", (1, 6), (3, 6)),
             ]
         )
     )
@@ -548,11 +562,12 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         [para("Fuoriuscita dall'ultima ispezione? / Discharges since the last inspection?"), para(metadata["spill_past"])],
         [para("Fuoriuscita al momento dell'ispezione? / Discharges at the time of inspection?"), para(metadata["spill_current"])],
     ]
-    events_table = Table(events_rows, colWidths=[80 * mm, 90 * mm])
+    events_table = Table(events_rows, colWidths=[80 * mm, 93 * mm])
     events_table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EDF3F1")),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
@@ -585,6 +600,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         table_style = [
             ("BACKGROUND", (0, 0), (-1, 0), HEADER_TEAL),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
             ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DEDA")),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 5),
@@ -705,6 +721,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (0, 0), HEADER_TEAL),
+                    ("TEXTCOLOR", (0, 1), (0, 1), colors.black),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#A9B8B2")),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("LEFTPADDING", (0, 0), (-1, -1), 6),
@@ -759,14 +776,14 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     def add_header_footer(canvas, document):
         canvas.saveState()
 
-        # Logo in alto a sinistra
+        # Logo in alto a sinistra allineato col margine effettivo delle tabelle
         if logo_reader is not None:
             img_w, img_h = logo_reader.getSize()
             target_height = 11 * mm
             target_width = target_height * (img_w / img_h)
             canvas.drawImage(
                 logo_reader,
-                17 * mm,
+                content_left_x,
                 A4[1] - 16 * mm,
                 width=target_width,
                 height=target_height,
@@ -775,14 +792,14 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             )
         else:
             canvas.setFont("Helvetica", 8)
-            canvas.setFillColor(colors.HexColor("#68756F"))
-            canvas.drawString(17 * mm, A4[1] - 12 * mm, "GET Consulting Srl")
+            canvas.setFillColor(colors.black)
+            canvas.drawString(content_left_x, A4[1] - 12 * mm, "GET Consulting Srl")
 
-        # Piè di pagina
+        # Piè di pagina in nero allineato ai margini effettivi
         canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(colors.HexColor("#68756F"))
-        canvas.drawString(17 * mm, 10 * mm, footer_caption)
-        canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina / Page {document.page}")
+        canvas.setFillColor(colors.black)
+        canvas.drawString(content_left_x, 10 * mm, footer_caption)
+        canvas.drawRightString(A4[0] - right_margin - 6, 10 * mm, f"Pagina / Page {document.page}")
         canvas.restoreState()
 
     doc.build(story, onFirstPage=add_header_footer, onLaterPages=add_header_footer)
