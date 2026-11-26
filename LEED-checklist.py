@@ -218,7 +218,6 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     except Exception:
         pass
 
-    # Ridimensiona mantenendo le proporzioni (max 1000px sul lato lungo -> nitidezza >300 DPI su 50mm)
     max_dim = 1000
     if max(img.size) > max_dim:
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
@@ -424,8 +423,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     buffer = BytesIO()
     left_margin = 17 * mm
     right_margin = 17 * mm
-    # ReportLab SimpleDocTemplate applica un frame padding interno predefinito di 6 pt
-    # al bordo sinistro delle tabelle; usiamo lo stesso offset per allineare perfettamente il logo.
     content_left_x = left_margin + 6
 
     doc = SimpleDocTemplate(
@@ -525,7 +522,8 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         ),
         Spacer(1, 4 * mm),
     ]
- metadata_rows = [
+
+    metadata_rows = [
         [para("Informazioni generali / General information", "TableHeader"), "", "", ""],
         [para("Commessa / Project"), para(metadata["project"], bilingual=False), para("Ispettore / Inspector"), para(metadata["inspector"], bilingual=False)],
         [para("Data / Date"), para(metadata["inspection_date"], bilingual=False), para("Titolo / Title"), para(metadata["inspector_titles"], bilingual=False)],
@@ -865,7 +863,7 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
             key="inspector_email",
         )
 
-# Riga 3: Tipo di ispezione | Indirizzo (+ Meteo) | Fase costruttiva
+    # Riga 3: Tipo di ispezione | Indirizzo (+ Meteo) | Fase costruttiva
     r3_col1, r3_col2, r3_col3 = st.columns(3)
     with r3_col1:
         inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
