@@ -211,18 +211,24 @@ def _load_font(size: int):
 
 
 def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place: str) -> bytes:
-    """Applica una didascalia proporzionata e ben leggibile in basso a destra con commessa, data e luogo."""
+    """Ridimensiona, ottimizza e applica una didascalia in basso a destra con commessa, data e luogo."""
     img = Image.open(io.BytesIO(photo_bytes))
     try:
         img = ImageOps.exif_transpose(img)
     except Exception:
         pass
+
+    # Ridimensiona mantenendo le proporzioni (max 1000px sul lato lungo -> nitidezza >300 DPI su 50mm)
+    max_dim = 1000
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
     img = img.convert("RGBA")
 
     lines = [p.strip() for p in (project_name, insp_date, place) if p and p.strip()]
     if not lines:
         out_io = io.BytesIO()
-        img.convert("RGB").save(out_io, format="JPEG", quality=90)
+        img.convert("RGB").save(out_io, format="JPEG", quality=72, optimize=True)
         return out_io.getvalue()
 
     width, height = img.size
@@ -230,14 +236,13 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Dimensione bilanciata: 3.5% del lato corto (minimo 42px)
-    font_size = max(42, int(min(width, height) * 0.035))
+    font_size = max(24, int(min(width, height) * 0.035))
     font = _load_font(font_size)
 
-    margin = max(16, int(min(width, height) * 0.02))
-    pad_x = max(18, int(font_size * 0.35))
-    pad_y = max(12, int(font_size * 0.25))
-    line_spacing = max(8, int(font_size * 0.18))
+    margin = max(10, int(min(width, height) * 0.02))
+    pad_x = max(12, int(font_size * 0.35))
+    pad_y = max(8, int(font_size * 0.25))
+    line_spacing = max(5, int(font_size * 0.18))
     max_box_width = int(width * 0.85)
     max_box_height = int(height * 0.35)
 
@@ -250,17 +255,16 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
-    # Scala proporzionalmente se troppo largo o alto
     scale_w = (max_box_width - 2 * pad_x) / text_w if (text_w + 2 * pad_x > max_box_width and text_w > 0) else 1.0
     scale_h = (max_box_height - 2 * pad_y) / text_h if (text_h + 2 * pad_y > max_box_height and text_h > 0) else 1.0
     scale_ratio = min(scale_w, scale_h)
 
     if scale_ratio < 1.0:
-        font_size = max(20, int(font_size * scale_ratio))
+        font_size = max(14, int(font_size * scale_ratio))
         font = _load_font(font_size)
-        pad_x = max(12, int(font_size * 0.35))
-        pad_y = max(8, int(font_size * 0.25))
-        line_spacing = max(6, int(font_size * 0.18))
+        pad_x = max(8, int(font_size * 0.35))
+        pad_y = max(6, int(font_size * 0.25))
+        line_spacing = max(4, int(font_size * 0.18))
         bboxes, text_w, line_heights, text_h = measure_lines(font, line_spacing)
 
     box_right = width - margin
@@ -287,7 +291,7 @@ def watermark_photo(photo_bytes: bytes, project_name: str, insp_date: str, place
 
     watermarked = Image.alpha_composite(img, overlay).convert("RGB")
     out_io = io.BytesIO()
-    watermarked.save(out_io, format="JPEG", quality=90)
+    watermarked.save(out_io, format="JPEG", quality=72, optimize=True)
     return out_io.getvalue()
 
 
@@ -421,6 +425,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
+        pageCompression=1,
         rightMargin=17 * mm,
         leftMargin=17 * mm,
         topMargin=22 * mm,
@@ -741,7 +746,15 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     footer_suffix = "/".join(footer_codes) if footer_codes else "LEED"
     footer_caption = f"Checklist cantiere LEED - {footer_suffix}"
 
-    logo_reader = ImageReader(str(LOGO_PATH)) if LOGO_PATH.is_file() else None
+    logo_reader = None
+    if LOGO_PATH.is_file():
+        with Image.open(LOGO_PATH) as logo_img:
+            logo_img = logo_img.convert("RGB")
+            logo_img.thumbnail((400, 400), Image.Resampling.LANCZOS)
+            logo_buf = BytesIO()
+            logo_img.save(logo_buf, format="JPEG", quality=85, optimize=True)
+            logo_buf.seek(0)
+            logo_reader = ImageReader(logo_buf)
 
     def add_header_footer(canvas, document):
         canvas.saveState()
