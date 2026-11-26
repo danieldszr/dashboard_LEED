@@ -2,9 +2,11 @@ from datetime import date, timedelta, time
 from html import escape
 from io import BytesIO
 from pathlib import Path
+import io
 
 import requests
 import streamlit as st
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -19,8 +21,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-import io
-from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 try:
     from pillow_heif import register_heif_opener
@@ -411,8 +411,16 @@ def format_bilingual(text: object, bold_all: bool = False) -> str:
     elif s.startswith("Sì / Yes:"):
         res = f"Sì / <i>Yes:</i> {escape(s[9:].strip())}"
     elif " / " in s:
-        it_part, en_part = s.split(" / ", 1)
-        res = f"{escape(it_part)} / <i>{escape(en_part)}</i>"
+        parts = s.split(", ")
+        if len(parts) > 1 and all(" / " in p for p in parts):
+            formatted_parts = []
+            for p in parts:
+                it_p, en_p = p.split(" / ", 1)
+                formatted_parts.append(f"{escape(it_p)} / <i>{escape(en_p)}</i>")
+            res = ", ".join(formatted_parts)
+        else:
+            it_part, en_part = s.split(" / ", 1)
+            res = f"{escape(it_part)} / <i>{escape(en_part)}</i>"
     else:
         res = escape(s)
     res = res.replace("\n", "<br/>")
@@ -677,7 +685,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
                     table_style.append(("SPAN", (0, current_row), (2, current_row)))
                     current_row += 1
 
-            # Riga di separazione pulita (senza colore e senza bordi laterali) tra una domanda e la successiva
             if question_index < len(questions) - 1:
                 rows.append(["", "", ""])
                 row_heights.append(3 * mm)
@@ -773,7 +780,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     def add_header_footer(canvas, document):
         canvas.saveState()
 
-        # Logo in alto a sinistra allineato col margine effettivo delle tabelle
         if logo_reader is not None:
             img_w, img_h = logo_reader.getSize()
             target_height = 11 * mm
@@ -792,7 +798,6 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
             canvas.setFillColor(colors.black)
             canvas.drawString(content_left_x, A4[1] - 12 * mm, "GET Consulting Srl")
 
-        # Piè di pagina in nero allineato ai margini effettivi
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.black)
         canvas.drawString(content_left_x, 10 * mm, footer_caption)
@@ -863,7 +868,7 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
             key="inspector_email",
         )
 
-    # Riga 3: Tipo di ispezione | Indirizzo (+ Meteo) | Fase costruttiva
+    # Riga 3: Tipo di ispezione | Indirizzo (+ Meteo) | Fase costruttiva (multipla)
     r3_col1, r3_col2, r3_col3 = st.columns(3)
     with r3_col1:
         inspection_type = st.selectbox("Tipo di ispezione / Inspection type", INSPECTION_TYPES, key="inspection_type")
@@ -892,9 +897,10 @@ with st.expander("Dati del progetto e dell'ispezione / Project and Inspection Da
         else:
             st.caption("Inserisci l'indirizzo per recuperare automaticamente il meteo della data selezionata. / Enter the address to automatically retrieve the weather for the selected date.")
     with r3_col3:
-        phase = st.selectbox(
+        selected_phases = st.multiselect(
             "Fase costruttiva / Construction Phase",
             CONSTRUCTION_PHASES,
+            placeholder="Seleziona... / Select...",
             key="phase",
         )
 
@@ -1082,7 +1088,7 @@ else:
         "project": current_project or "—",
         "site": st.session_state.get("site", "").strip() or "—",
         "address": current_address or "—",
-        "phase": st.session_state.get("phase", "").strip() or "—",
+        "phase": ", ".join(selected_phases) if selected_phases else "—",
         "inspection_date": formatted_date_str,
         "time_range": f"{st.session_state.get('start_time', '—')} - {st.session_state.get('end_time', '—')}",
         "inspection_type": st.session_state.get("inspection_type", "—"),
