@@ -1,6 +1,7 @@
 from datetime import date, timedelta, time
 from html import escape
 from io import BytesIO
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -9,6 +10,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Paragraph,
     Image as ReportImage,
@@ -26,6 +28,9 @@ try:
     HEIF_SUPPORTED = True
 except ImportError:
     HEIF_SUPPORTED = False
+
+BASE_DIR = Path(__file__).resolve().parent
+LOGO_PATH = BASE_DIR / "GET-Consulting-LOGO.jpg"
 
 ADDITIONAL_SECTION_TITLE = "Misure addizionali / Additional measures (CAM dm 23.06.2022 n.256 – criteri 2.6)"
 
@@ -418,7 +423,7 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
         pagesize=A4,
         rightMargin=17 * mm,
         leftMargin=17 * mm,
-        topMargin=20 * mm,
+        topMargin=22 * mm,
         bottomMargin=18 * mm,
         title="Ispezione di cantiere LEED / LEED Construction Site Inspection",
         author="Dashboard checklist LEED",
@@ -736,11 +741,33 @@ def make_pdf(metadata: dict, answers: dict, active_checklists: dict) -> bytes:
     footer_suffix = "/".join(footer_codes) if footer_codes else "LEED"
     footer_caption = f"Checklist cantiere LEED - {footer_suffix}"
 
+    logo_reader = ImageReader(str(LOGO_PATH)) if LOGO_PATH.is_file() else None
+
     def add_header_footer(canvas, document):
         canvas.saveState()
+
+        # Logo in alto a sinistra
+        if logo_reader is not None:
+            img_w, img_h = logo_reader.getSize()
+            target_height = 11 * mm
+            target_width = target_height * (img_w / img_h)
+            canvas.drawImage(
+                logo_reader,
+                17 * mm,
+                A4[1] - 16 * mm,
+                width=target_width,
+                height=target_height,
+                preserveAspectRatio=True,
+                mask="auto",
+            )
+        else:
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(colors.HexColor("#68756F"))
+            canvas.drawString(17 * mm, A4[1] - 12 * mm, "GET Consulting Srl")
+
+        # Piè di pagina
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#68756F"))
-        canvas.drawString(17 * mm, A4[1] - 12 * mm, "GET Consulting Srl")
         canvas.drawString(17 * mm, 10 * mm, footer_caption)
         canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Pagina / Page {document.page}")
         canvas.restoreState()
